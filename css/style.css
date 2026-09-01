@@ -88,7 +88,9 @@ h1, h2, h3 { margin: 0; font-weight: 650; }
   color: var(--netral);
 }
 .ikon-modul { width: 40px; height: 40px; display: block; }
-.ikon-modul .ikon-isi { fill: var(--kaca); }
+.ikon-modul /* isi cairan ikon rak: warna intrinsik reagen kalau datanya punya (field
+   `warna` di alatBahan), kalau tidak ya bening seperti dulu. */
+.ikon-isi { fill: var(--isi-reagen, var(--kaca)); }
 .kartu-modul:hover .kartu-ikon { color: var(--tinta); }
 
 .nota { margin-top: 26px; font-size: 13px; color: var(--samar); }
@@ -255,7 +257,9 @@ h1, h2, h3 { margin: 0; font-weight: 650; }
 /* ikon SVG skematik — stroke ikut currentColor, warna hanya untuk isi & api */
 .item-gambar { width: 32px; height: 42px; margin: 0 auto 5px; color: var(--tinta); }
 .ikon { display: block; width: 100%; height: 100%; }
-.ikon-isi { fill: var(--kaca); }
+/* isi cairan ikon rak: warna intrinsik reagen kalau datanya punya (field
+   `warna` di alatBahan), kalau tidak ya bening seperti dulu. */
+.ikon-isi { fill: var(--isi-reagen, var(--kaca)); }
 .ikon-api { fill: var(--api); }
 
 /* ---------------- takaran ---------------- */
@@ -607,6 +611,38 @@ h1, h2, h3 { margin: 0; font-weight: 650; }
   100% { opacity: 0;  transform: translateY(-11px); }
 }
 
+/* --- thermal cycler: tutup berpemanas menutup, lalu suhu MENYIKLUS ---
+   Tiga fase per siklus mengikuti program PCR: denaturasi 95 °C (panas) →
+   annealing (dingin) → ekstensi 72 °C (hangat). Satu putaran 800ms, mesin
+   jalan 2400ms, jadi tiga siklus kelihatan — cukup buat membaca "ini
+   berulang", tanpa berpura-pura menghitung 30 siklus sungguhan. */
+.cycler-tutup {
+  transform-box: view-box; transform-origin: 90px 24px;
+  transform: translateY(-8px);       /* idle: tutup terangkat */
+  transition: transform .3s ease;
+}
+.mesin-thermocycler.mesin-jalan .cycler-tutup { transform: translateY(20px); }
+
+.cycler-lcd { fill: var(--panel); transition: fill .3s ease; }
+.cycler-sumur rect { fill: var(--panel); transition: fill .3s ease; }
+.mesin-thermocycler.mesin-jalan .cycler-lcd { animation: siklus-suhu .8s steps(1, end) infinite; }
+.mesin-thermocycler.mesin-jalan .cycler-sumur rect { animation: siklus-suhu .8s steps(1, end) infinite; }
+@keyframes siklus-suhu {
+  0%,   32%  { fill: var(--api); }      /* 95 °C denaturasi */
+  33%,  65%  { fill: var(--netral); }   /* annealing 45–60 °C */
+  66%, 100%  { fill: var(--kaca); }     /* 72 °C ekstensi */
+}
+
+/* indikator siklus: tiga kotak menyala bergantian */
+.cycler-tanda rect { fill: var(--panel); }
+.mesin-thermocycler.mesin-jalan .cycler-tanda rect { animation: siklus-tanda .8s steps(1, end) infinite; }
+.mesin-thermocycler.mesin-jalan .cycler-tanda rect:nth-child(2) { animation-delay: .266s; }
+.mesin-thermocycler.mesin-jalan .cycler-tanda rect:nth-child(3) { animation-delay: .532s; }
+@keyframes siklus-tanda {
+  0%,  32%  { fill: var(--tinta); }
+  33%, 100% { fill: var(--panel); }
+}
+
 /* --- barang yang sedang diproses mesin: turun "masuk alat", lalu balik --- */
 .prop.zona-diproses { animation: zona-proses 1.4s ease-in-out; }
 @keyframes zona-proses {
@@ -630,7 +666,8 @@ h1, h2, h3 { margin: 0; font-weight: 650; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mesin, .sentri-rotor, .blok-uap, .prop { animation: none !important; }
+  .mesin, .sentri-rotor, .blok-uap, .prop,
+  .cycler-lcd, .cycler-sumur rect, .cycler-tanda rect { animation: none !important; }
 }
 
 /* --- alat ukur: badan + layar + slot strip + kompartemen baterai --- */

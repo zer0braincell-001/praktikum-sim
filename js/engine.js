@@ -59,6 +59,11 @@
                            tidak dibaca validasi/skor sama sekali. */
       penampung: null,  /* zona penerima tirisan berikutnya = target pemindahan
                            terakhir. Lihat efekProsedur(). */
+      warnaZona: {},    /* zona -> warna cairan di zona itu (room prosedur, banyak
+                           tabung). Room kimia tetap memakai S.warna yang global.
+                           TIDAK PERNAH dicampur/di-blend: isinya selalu satu warna
+                           utuh — entah warna intrinsik reagen, entah warna hasil
+                           yang di-script data. */
       membran: {},      /* zona kolom -> warna deposit yang MENEMPEL di membran
                            (mis. DNA di silika). Sengaja TIDAK ikut tertiris
                            sentrifugasi/pencucian — cuma hasilVisual 'elusi'
@@ -96,6 +101,20 @@
     return !!S && satuanDipakai(S.percobaan).length > 0;
   }
 
+  /* Langkah takaran percobaan ini pakai angka pecahan atau tidak. Menentukan
+     `step` input angka + besar loncatan tombol +/-. Diturunkan dari DATA:
+     room biokimia (semua dosisnya bulat) tetap melangkah 1 seperti dulu, room
+     yang punya 12,5 µL melangkah 0,5. */
+  function langkahTakaran(percobaan) {
+    var pecahan = (percobaan.langkah || []).some(function (l) {
+      return l.takaranBenar && Number(l.takaranBenar.nilai) % 1 !== 0;
+    });
+    return pecahan ? 0.5 : 1;
+  }
+
+  /* Bulatkan sisa-sisa floating point (0.1+0.2) tanpa mengubah angka bulat. */
+  function rapikanAngka(v) { return Math.round(v * 1000) / 1000; }
+
   /* Satuan yang dipakai percobaan ini, urut sesuai SATUAN_DIDUKUNG. */
   function satuanDipakai(percobaan) {
     var ada = [];
@@ -108,6 +127,24 @@
     /* satuan asing di data tetap ditampilkan supaya langkahnya bisa dikerjakan */
     ada.forEach(function (s) { if (urut.indexOf(s) === -1) urut.push(s); });
     return urut;
+  }
+
+  /* Warna intrinsik reagen, dari field opsional `warna` di alatBahan.
+     Tidak ada = reagennya memang bening; jangan mengarang warna. */
+  function warnaReagen(nama) {
+    var daftar = (S && S.percobaan.alatBahan) || [];
+    for (var i = 0; i < daftar.length; i++) {
+      if (daftar[i].nama === nama) return daftar[i].warna || null;
+    }
+    return null;
+  }
+
+  /* Langkah ini menuliskan warna hasil sendiri atau tidak. Kalau ya, warna itu
+     MENANG atas warna intrinsik reagen — warna di buku adalah keadaan SETELAH
+     reaksi, bukan warna botolnya. */
+  function punyaWarnaScript(l) {
+    if (!l || !l.hasilVisual) return false;
+    return daftarVisual(l.hasilVisual).some(function (v) { return v && v.jenis === 'warna'; });
   }
 
   /* ---------- util DOM ---------- */
@@ -503,6 +540,9 @@
     n.dataset.sumber = item.nama;
     var gambar = el('div', 'item-gambar');
     gambar.innerHTML = ikonUntuk(item.nama, bahan);
+    /* isi cairan di ikon ikut warna reagen. Lewat custom property supaya SVG
+       inline-nya tidak perlu diubah; tanpa `warna`, CSS jatuh ke --kaca. */
+    if (item.warna) gambar.style.setProperty('--isi-reagen', item.warna);
     n.appendChild(gambar);
     n.appendChild(el('span', 'item-nama', item.nama));
     /* Ujian: jumlah/takaran disembunyikan — nama & ikon tetap tampil supaya
@@ -572,7 +612,7 @@
 
   function ikonUntuk(nama, bertakaran) {
     var n = String(nama).toLowerCase();
-    if (n.indexOf('tabung reaksi') !== -1) return IKON.tabung();
+    if (n.indexOf('tabung') !== -1) return IKON.tabung();
     if (n.indexOf('spiritus') !== -1 || n.indexOf('pembakar') !== -1) return IKON.pembakar();
     if (n.indexOf('lanset') !== -1) return IKON.lanset();
     if (n.indexOf('lakmus') !== -1 || n.indexOf('kertas') !== -1) return IKON.kertas();
@@ -588,17 +628,19 @@
     var baris = el('div', 'takaran-baris');
     var kurang = el('button', 'tombol tombol-bulat', '−');
     kurang.type = 'button';
-    kurang.addEventListener('click', function () { ubahTakaran(-1); });
+    kurang.addEventListener('click', function () { ubahTakaran(-langkahTakaran(S.percobaan)); });
 
     var input = el('input', 'takaran-input');
     input.id = 'takaran-nilai';
     input.type = 'number';
     input.min = '0';
-    input.step = '1';
+    /* step ikut data: kalau ada dosis pecahan, input number harus menerimanya
+       (step '1' bikin 12,5 dianggap tidak valid & panah naik-turun membulatkan) */
+    input.step = String(langkahTakaran(S.percobaan));
     input.value = String(S.takaran.nilai);
     input.addEventListener('input', function () {
       var v = parseFloat(input.value);
-      S.takaran.nilai = isNaN(v) ? 0 : v;
+      S.takaran.nilai = isNaN(v) ? 0 : rapikanAngka(v);
       /* sengaja BUKAN update(): update() menulis ulang isi input dan bikin
          ketikan setengah jalan ("1.") lompat. Cukup segarkan penunjuknya. */
       renderSiapTuang();
@@ -606,7 +648,7 @@
 
     var tambah = el('button', 'tombol tombol-bulat', '+');
     tambah.type = 'button';
-    tambah.addEventListener('click', function () { ubahTakaran(1); });
+    tambah.addEventListener('click', function () { ubahTakaran(langkahTakaran(S.percobaan)); });
 
     baris.appendChild(kurang);
     baris.appendChild(input);
@@ -639,7 +681,7 @@
   }
 
   function ubahTakaran(delta) {
-    var v = (S.takaran.nilai || 0) + delta;
+    var v = rapikanAngka((S.takaran.nilai || 0) + delta);
     if (v < 0) v = 0;
     S.takaran.nilai = v;
     id('takaran-nilai').value = String(v);
@@ -825,6 +867,39 @@
       '</g>' +
     '</svg>';
 
+  var SVG_THERMOCYCLER =
+    '<svg class="prop-svg" viewBox="0 0 180 150" aria-hidden="true">' +
+      /* badan */
+      '<rect x="14" y="56" width="152" height="78" rx="6" fill="none" ' +
+        'stroke="currentColor" stroke-width="2.5"/>' +
+      '<line x1="6" y1="134" x2="174" y2="134" stroke="currentColor" stroke-width="2.5"/>' +
+      /* blok sumur + tabung yang tertanam di dalamnya */
+      '<rect x="46" y="42" width="88" height="18" fill="var(--panel)" ' +
+        'stroke="currentColor" stroke-width="2"/>' +
+      '<g class="cycler-sumur">' +
+        '<rect x="56" y="46" width="12" height="10" stroke="currentColor" stroke-width="1.5"/>' +
+        '<rect x="74" y="46" width="12" height="10" stroke="currentColor" stroke-width="1.5"/>' +
+        '<rect x="92" y="46" width="12" height="10" stroke="currentColor" stroke-width="1.5"/>' +
+        '<rect x="110" y="46" width="12" height="10" stroke="currentColor" stroke-width="1.5"/>' +
+      '</g>' +
+      /* tutup BERPEMANAS: idle terangkat, menutup saat mesin jalan */
+      '<g class="cycler-tutup">' +
+        '<rect x="44" y="16" width="92" height="16" rx="3" fill="var(--panel)" ' +
+          'stroke="currentColor" stroke-width="2.5"/>' +
+        '<line x1="58" y1="24" x2="122" y2="24" stroke="currentColor" stroke-width="1.4"/>' +
+      '</g>' +
+      /* LCD: warnanya menyiklus 95 -> annealing -> 72 */
+      '<rect class="cycler-lcd" x="26" y="76" width="52" height="30" ' +
+        'stroke="currentColor" stroke-width="2"/>' +
+      /* indikator siklus */
+      '<g class="cycler-tanda">' +
+        '<rect x="94" y="88" width="9" height="9" stroke="currentColor" stroke-width="1.4"/>' +
+        '<rect x="108" y="88" width="9" height="9" stroke="currentColor" stroke-width="1.4"/>' +
+        '<rect x="122" y="88" width="9" height="9" stroke="currentColor" stroke-width="1.4"/>' +
+      '</g>' +
+      '<circle cx="148" cy="92" r="9" fill="none" stroke="currentColor" stroke-width="2"/>' +
+    '</svg>';
+
   var MESIN = [
     {
       id: 'sentrifus', nama: 'Centrifuge',
@@ -836,13 +911,12 @@
       kata: ['inkubasi', 'inkubasikan', 'heat block', '70°c', '65°c', '56°c'],
       sprite: SVG_HEATBLOCK, kelas: 'mesin-jalan', durasi: 1400, tiriskan: false
     },
-    /* --- HOOK, belum digambar (sprite null = dilewati) --- */
     {
-      /* #B3 PCR: tinggal isi sprite thermal cycler + blok suhu per siklus */
       id: 'thermocycler', nama: 'Thermal cycler',
       kata: ['thermal cycler', 'thermocycler', 'siklus', 'denaturasi', 'annealing'],
-      sprite: null, kelas: 'mesin-jalan', durasi: 2000, tiriskan: false
+      sprite: SVG_THERMOCYCLER, kelas: 'mesin-jalan', durasi: 2400, tiriskan: false
     },
+    /* --- HOOK, belum digambar (sprite null = dilewati) --- */
     {
       /* #B4 Elektroforesis: tinggal isi sprite chamber + power supply + gel */
       id: 'elektroforesis', nama: 'Power supply & gel',
@@ -890,6 +964,15 @@
      - mesin ber-`tiriskan`: isi zona target turun. Kalau penampungnya zona
        lain, cairannya mendarat di situ (elusi); kalau penampungnya zona itu
        sendiri, cairannya memang dibuang (flow-through cucian). */
+  /* Zona yang isinya habis (dipindah/ditiris) ikut kehilangan warnanya —
+     tabung kosong tidak boleh tetap tertint. Ini yang bikin warna "ikut"
+     cairan tanpa simulasi apa pun: yang ada cuma "berisi cairan berwarna X"
+     atau "kosong". */
+  function segarkanWarnaZona(zona) {
+    if (!zona) return;
+    if (!(S.volumeZona[zona] > 0)) S.warnaZona[zona] = null;
+  }
+
   function efekProsedur(att) {
     if (att.aksi !== 'tindakan') return;
     var lab = String(att.label || '').toLowerCase();
@@ -897,20 +980,35 @@
     if (lab.indexOf('pindahkan') !== -1) {
       var v = S.volumeZona[att.sumber] || 0;
       if (v) {
+        /* isi pindah bersama warnanya — sekali lagi, dipindah, bukan dicampur */
+        var wPindah = S.warnaZona[att.sumber];
         S.volumeZona[att.target] = (S.volumeZona[att.target] || 0) + v;
         S.volumeZona[att.sumber] = 0;
+        if (wPindah) S.warnaZona[att.target] = wPindah;
       }
+      segarkanWarnaZona(att.sumber);
+      segarkanWarnaZona(att.target);
       S.penampung = att.target;
       return;
     }
 
     var m = mesinUntuk(att.label);
-    if (m && m.tiriskan) {
+    /* Langkah boleh MENIMPA sifat `tiriskan` mesinnya lewat field data
+       `tiriskan`. Perlu karena satu sprite mesin melayani dua pemakaian yang
+       berbeda: quick-spin PCR memakai centrifuge yang sama, tapi tujuannya
+       mengumpulkan tetesan di dasar tabung — bukan mengosongkan tabung.
+       Langkah yang TIDAK menyetel field ini jatuh ke sifat mesinnya, jadi
+       Isolasi DNA berperilaku persis seperti sebelumnya. */
+    var tiris = att.tiriskan !== undefined ? att.tiriskan : (m && m.tiriskan);
+    if (m && tiris) {
       var turun = S.volumeZona[att.target] || 0;
       S.volumeZona[att.target] = 0;
       if (turun && S.penampung && S.penampung !== att.target) {
         S.volumeZona[S.penampung] = (S.volumeZona[S.penampung] || 0) + turun;
+        if (S.warnaZona[att.target]) S.warnaZona[S.penampung] = S.warnaZona[att.target];
       }
+      segarkanWarnaZona(att.target);
+      if (S.penampung) segarkanWarnaZona(S.penampung);
     }
   }
 
@@ -1503,6 +1601,11 @@
     if (j.aksi && j.aksi !== att.aksi) return false;
     if (j.sumber && j.sumber !== att.sumber) return false;
     if (j.target && j.target !== att.target) return false;
+    /* `label` di `jika` DULU diabaikan diam-diam, jadi aturan yang ditulis
+       untuk satu tombol tindakan ikut menjawab aksi lain yang kebetulan lolos
+       syarat belum/sudah-nya — pesannya salah alamat. Sekarang dihormati.
+       Room biokimia tidak memakai `label` di `jika`, jadi tidak terpengaruh. */
+    if (j.label && j.label !== att.label) return false;
     if (j.takaran === 'salah') {
       /* aksi yang memang tidak membawa takaran tidak boleh kena aturan takaran */
       if (!att.takaran || !pemilik.takaranBenar) return false;
@@ -1563,7 +1666,7 @@
        sebelumnya sekaligus memasang tabungnya — kalau urutannya kebalik,
        pemasangan tabung itu sendiri ikut terhapus. Jenis lain tidak
        menyentuh isi/alat/api, jadi pemindahan ini netral buat room lama. */
-    if (l.hasilVisual) terapkanVisual(l.hasilVisual);
+    if (l.hasilVisual) terapkanVisual(l.hasilVisual, l.target);
 
     if (att.aksi === 'drag' && att.target === 'Meja kerja') {
       if (S.alat.indexOf(att.sumber) === -1) S.alat.push(att.sumber);
@@ -1575,7 +1678,18 @@
       S.pasang[att.target] = (S.pasang[att.target] || []).concat(att.sumber);
       S.volumeZona[att.target] =
         (S.volumeZona[att.target] || 0) + volumeDari(att.takaran);
+
+      /* Reagen berwarna mewarnai zona tujuannya. Reagen tanpa `warna` (bening)
+         TIDAK menimpa warna yang sudah ada — bening itu netral, bukan cat
+         putih. Dan kalau langkah ini punya warna hasil sendiri, warna itu yang
+         menang: TIDAK ada pencampuran, cuma "warna mana yang berlaku". */
+      var wr = warnaReagen(att.sumber);
+      if (wr && !punyaWarnaScript(l)) {
+        S.warnaZona[att.target] = wr;
+        if (!prosedur()) S.warna = wr;
+      }
     }
+    if (l.tiriskan !== undefined) att.tiriskan = l.tiriskan;
     if (prosedur()) efekProsedur(att);
     if (att.aksi === 'nyalakan') S.api = true;
     if (att.aksi === 'panaskan') S.panas = true;
@@ -1645,9 +1759,12 @@
     return Object.prototype.toString.call(hv) === '[object Array]' ? hv : [hv];
   }
 
-  function terapkanVisual(hv) {
+  function terapkanVisual(hv, zona) {
     daftarVisual(hv).forEach(function (v) {
-      if (v.jenis === 'warna') S.warna = v.nilai;
+      /* warna script dicatat DUA kali: global (dipakai room kimia yang cuma
+         punya satu tabung) dan per-zona (dipakai room prosedur). Room kimia
+         tidak membaca warnaZona, jadi perilakunya tidak berubah sedikit pun. */
+      if (v.jenis === 'warna') { S.warna = v.nilai; if (zona) S.warnaZona[zona] = v.nilai; }
       else if (v.jenis === 'endapan') S.endapan = v.nilai;
       else if (v.jenis === 'endapan-larut') S.endapan = null;
       else if (v.jenis === 'gas') S.gas = true;
@@ -1716,6 +1833,7 @@
     S.pasang = {};
     S.aksiSelesai = {};
     S.volumeZona = {};
+    S.warnaZona = {};
     S.penampung = null;
     S.membran = {};
     S.eluat = {};
@@ -1900,7 +2018,11 @@
 
   function fmtTakaran(t) {
     if (!t) return '-';
-    return String(t.nilai) + (t.satuan === '%' ? '%' : ' ' + t.satuan);
+    /* koma desimal, bukan titik — "12,5 µL" seperti di buku praktikum. Angka
+       bulat tidak berubah, jadi room biokimia tidak tersentuh. Nilai di INPUT
+       tetap bertitik: itu syarat <input type="number">. */
+    var n = String(t.nilai).replace('.', ',');
+    return n + (t.satuan === '%' ? '%' : ' ' + t.satuan);
   }
 
   /* "Siap dituang" = nilai yang AKAN dipakai kalau reagen dituang sekarang.
@@ -2087,11 +2209,14 @@
          hasilVisual warna, S.warna sudah menyimpannya dan itu yang dipakai.
          Zona yang sudah menerima eluat memakai warna eluatnya — itu produk
          akhir yang harus kelihatan, bukan cairan biasa. */
+      /* Warna zona ini sendiri; kalau belum pernah diwarnai, bening. S.warna
+         yang global sengaja TIDAK dipakai di sini — di room prosedur ada
+         banyak tabung, dan mewarnai semuanya sekaligus itu salah. */
       var eluat = S.eluat[zn];
       /* backgroundColor, BUKAN shorthand `background`: kelas .cairan-dna
          menaruh tekstur lewat background-image, dan shorthand inline akan
          menghapusnya. Pola yang sama sudah dipakai .endapan di room kimia. */
-      cair[c].style.backgroundColor = eluat || S.warna;
+      cair[c].style.backgroundColor = eluat || S.warnaZona[zn] || WARNA_BENING;
       cair[c].classList.toggle('cairan-dna', !!eluat);
     }
 
