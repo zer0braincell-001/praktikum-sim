@@ -21,7 +21,7 @@ window.PRAKTIKUM.push({
   alatBahan: [
     { nama: 'Tabung reaksi',        jumlah: '1 buah' },
     { nama: 'Larutan albumin 2%',   jumlah: '2 cc' },
-    { nama: 'HNO3 pekat',           jumlah: '1 cc' },
+    { nama: 'HNO3 pekat',           jumlah: '1 cc', warna: '#f6f0cf' },
     { nama: 'Pembakar spiritus',    jumlah: '1 buah' },
     { nama: 'Larutan NaOH pekat',   jumlah: 'secukupnya, tetes demi tetes' }
   ],

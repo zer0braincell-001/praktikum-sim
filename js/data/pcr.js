@@ -54,7 +54,7 @@
       { nama: 'Nuclease-Free Water (NFW)',   jumlah: '8 µL' },
       { nama: 'Primer Forward',              jumlah: '1 µL' },
       { nama: 'Primer Reverse',              jumlah: '1 µL' },
-      { nama: MIX,                           jumlah: '12,5 µL' },
+      { nama: MIX,                           jumlah: '12,5 µL', warna: '#c0392b' },
       { nama: TEMPLATE,                      jumlah: '2,5 µL' }
     ],
 

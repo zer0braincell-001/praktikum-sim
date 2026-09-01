@@ -1882,6 +1882,11 @@
     else h = 60 * ((r - g) / d + 4);
     if (h < 0) h += 360;
     if (h < 15 || h >= 345) return 'merah';
+    /* Cokelat = jingga yang gelap. Tanpa cabang ini lisat darah (#6b4423)
+       dinamai "jingga", padahal datanya sendiri menyebutnya kecoklatan.
+       Sengaja dibatasi ke pita jingga: merah gelap (darah) tetap "merah",
+       dan jingga terang xanthoprotein (#e8791e, l≈0.51) tetap "jingga". */
+    if (h < 45 && l < 0.40) return 'cokelat';
     if (h < 45)  return 'jingga';
     if (h < 70)  return 'kuning';
     if (h < 160) return 'hijau';

@@ -56,7 +56,7 @@
       { nama: 'Tabung reaksi',        jumlah: '1 buah' },
       { nama: 'Larutan albumin 2%',   jumlah: '2 cc' },
       { nama: 'Larutan NaOH 10%',     jumlah: '2 cc' },
-      { nama: 'Larutan CuSO4',        jumlah: '1 tetes (maksimum 10 tetes)' },
+      { nama: 'Larutan CuSO4',        jumlah: '1 tetes (maksimum 10 tetes)', warna: '#2e6db4' },
       { nama: 'Urea',                 jumlah: 'secukupnya (sedikit)' },
       { nama: 'Pembakar spiritus',    jumlah: '1 buah' },
       { nama: 'Aquadest',             jumlah: '2 cc' }

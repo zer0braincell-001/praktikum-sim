@@ -88,7 +88,7 @@
       'PCR. DNA tak berwarna — keberhasilan dibuktikan di elektroforesis.',
 
     alatBahan: [
-      { nama: 'Sampel darah',              jumlah: '200 µL' },
+      { nama: 'Sampel darah',              jumlah: '200 µL', warna: '#6e1414' },
       { nama: 'Binding Buffer',            jumlah: '200 µL' },
       { nama: 'Proteinase K',              jumlah: '40 µL' },
       { nama: 'Isopropanol',               jumlah: '100 µL' },
@@ -161,10 +161,13 @@
         label: 'Campur & inkubasi 70°C, 10 menit',
         sumber: TABUNG,
         target: TABUNG,
-        hasilVisual: {
-          jenis: 'teks',
-          nilai: 'Sel darah lisis; protein dicerna Proteinase K. Larutan menjadi jernih kecoklatan.'
-        },
+        /* satu-satunya warna hasil di room ini: lisat jernih kecoklatan.
+           Warna ini MENANG atas merah darah karena ditulis di langkahnya. */
+        hasilVisual: [
+          { jenis: 'warna', nilai: '#6b4423' },
+          { jenis: 'teks',
+            nilai: 'Sel darah lisis; protein dicerna Proteinase K. Larutan menjadi jernih kecoklatan.' }
+        ],
         salahUmum: [
           {
             jika: { label: 'Campur & inkubasi 70°C, 10 menit', belum: ['Proteinase K'] },

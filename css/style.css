@@ -13,6 +13,7 @@
   --netral: #3a5a78;
   --kaca: #b9c6d1;
   --api: #d4762c;
+  --darah: #6e1414;   /* merah gelap vena — dipakai prop tetes darah */
 }
 
 * { box-sizing: border-box; }
@@ -705,7 +706,10 @@ h1, h2, h3 { margin: 0; font-weight: 650; }
 .alat-darah {
   position: absolute; left: 50%; top: 3px; transform: translateX(-50%);
   width: 11px; height: 11px; border-radius: 50%;
-  background: var(--salah);
+  /* darah vena, bukan merah "status salah" — kebetulan dua-duanya merah, tapi
+     yang satu warna bahan dan yang satu warna status. Dipisah supaya tidak
+     ikut berubah kalau palet status diutak-atik. */
+  background: var(--darah);
 }
 .alat-strip[hidden], .alat-darah[hidden],
 .alat-baterai[hidden], .lanset-isi[hidden],
