@@ -70,6 +70,8 @@
                            yang memindahkannya. */
       eluat: {},        /* zona tabung -> warna hasil elusi yang sudah turun ke
                            situ. Ini produk akhir yang kelihatan. */
+      gel: null,        /* spesifikasi gel elektroforesis dari hasilVisual jenis
+                           'gel'. Dipakai dua tempat: panggung & blok Hasil. */
       warna: WARNA_BENING,
       endapan: null,
       gas: false,
@@ -900,6 +902,42 @@
       '<circle cx="148" cy="92" r="9" fill="none" stroke="currentColor" stroke-width="2"/>' +
     '</svg>';
 
+  var SVG_ELEKTRO =
+    '<svg class="prop-svg" viewBox="0 0 180 150" aria-hidden="true">' +
+      /* chamber + buffer + gel */
+      '<path d="M8 52h104v72H8z" fill="none" stroke="currentColor" stroke-width="2.5"/>' +
+      '<rect class="elektro-buffer" x="10" y="70" width="100" height="52"/>' +
+      '<rect class="elektro-gel" x="28" y="80" width="64" height="34" ' +
+        'stroke="currentColor" stroke-width="1.5"/>' +
+      /* elektroda: katoda (-) kiri, anoda (+) kanan */
+      '<line x1="20" y1="56" x2="20" y2="118" stroke="currentColor" stroke-width="2.5"/>' +
+      '<line x1="100" y1="56" x2="100" y2="118" stroke="currentColor" stroke-width="2.5"/>' +
+      '<text class="elektro-kutub" x="20" y="48" text-anchor="middle">\u2212</text>' +
+      '<text class="elektro-kutub" x="100" y="48" text-anchor="middle">+</text>' +
+      /* gelembung elektrolisis di kedua elektroda */
+      '<g class="elektro-gelembung">' +
+        '<circle cx="20" cy="104" r="2.6"/><circle cx="20" cy="90" r="2"/>' +
+        '<circle cx="100" cy="100" r="2.6"/><circle cx="100" cy="86" r="2"/>' +
+      '</g>' +
+      /* pita yang bermigrasi ke anoda selagi running */
+      '<g class="elektro-migrasi">' +
+        '<rect x="36" y="88" width="14" height="4" rx="1.5"/>' +
+        '<rect x="36" y="100" width="14" height="4" rx="1.5"/>' +
+      '</g>' +
+      /* power supply + layar */
+      '<rect x="120" y="66" width="52" height="58" rx="4" fill="none" ' +
+        'stroke="currentColor" stroke-width="2.5"/>' +
+      '<rect class="elektro-layar" x="127" y="74" width="38" height="22" ' +
+        'stroke="currentColor" stroke-width="1.5"/>' +
+      '<text class="elektro-teks" x="146" y="83" text-anchor="middle">100 V</text>' +
+      '<text class="elektro-teks" x="146" y="92" text-anchor="middle">400 mA</text>' +
+      '<circle cx="133" cy="110" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+      '<circle cx="159" cy="110" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+      '<line x1="112" y1="72" x2="120" y2="72" stroke="currentColor" stroke-width="2"/>' +
+      '<line x1="112" y1="112" x2="120" y2="112" stroke="currentColor" stroke-width="2"/>' +
+      '<line x1="2" y1="130" x2="178" y2="130" stroke="currentColor" stroke-width="2.5"/>' +
+    '</svg>';
+
   var MESIN = [
     {
       id: 'sentrifus', nama: 'Centrifuge',
@@ -916,12 +954,15 @@
       kata: ['thermal cycler', 'thermocycler', 'siklus', 'denaturasi', 'annealing'],
       sprite: SVG_THERMOCYCLER, kelas: 'mesin-jalan', durasi: 2400, tiriskan: false
     },
-    /* --- HOOK, belum digambar (sprite null = dilewati) --- */
     {
       /* #B4 Elektroforesis: tinggal isi sprite chamber + power supply + gel */
       id: 'elektroforesis', nama: 'Power supply & gel',
-      kata: ['elektroforesis', 'running', 'power supply', 'gel doc', 'gel'],
-      sprite: null, kelas: 'mesin-jalan', durasi: 2000, tiriskan: false
+      /* JANGAN taruh 'gel' telanjang di sini: kata kunci mesin juga dipakai
+         menilai NAMA TARGET, dan 'gel' menelan zona bernama "Sumur gel" —
+         zonanya lenyap dari adegan dan langkahnya jadi tidak bisa dikerjakan.
+         'gel doc' cukup spesifik. */
+      kata: ['elektroforesis', 'running', 'power supply', 'gel doc'],
+      sprite: SVG_ELEKTRO, kelas: 'mesin-jalan', durasi: 2000, tiriskan: false
     }
   ];
 
@@ -1098,6 +1139,10 @@
        kata kunci mesin ber-sprite. Asam Urat tidak punya, jadi tidak dapat. */
     var mesin = bangunMesin();
     if (mesin) meja.appendChild(mesin);
+
+    /* panel gel: dibangun kalau data room ini memang menghasilkan gel,
+       disembunyikan sampai langkah gel-doc benar-benar dijalankan. */
+    if (punyaGel()) meja.appendChild(bangunPanelGel());
 
     /* panel Aksi menempel ke zona alat, bukan nyasar di kolom kiri */
     var khusus = bangunPanelAksiKhusus();
@@ -1770,6 +1815,7 @@
       else if (v.jenis === 'gas') S.gas = true;
       else if (v.jenis === 'lakmus') S.lakmus = v.nilai;
       else if (v.jenis === 'reset') kosongkanTabung();
+      else if (v.jenis === 'gel') S.gel = v.nilai;
       else if (v.jenis === 'ikat-membran') ikatMembran(v.nilai);
       else if (v.jenis === 'elusi') elusikan();
       /* "reset" itu aksi persiapan, bukan pengamatan — jangan cemari
@@ -1837,6 +1883,7 @@
     S.penampung = null;
     S.membran = {};
     S.eluat = {};
+    S.gel = null;
   }
 
   function deskripsiVisual(hv) {
@@ -1850,6 +1897,7 @@
     if (v.jenis === 'gas')     return 'Muncul gelembung gas.';
     if (v.jenis === 'lakmus')  return 'Kertas lakmus berubah menjadi ' + namaWarna(v.nilai) + '.';
     if (v.jenis === 'reset')   return 'Tabung bersih dan kosong disiapkan.';
+    if (v.jenis === 'gel')     return ringkasGel(v.nilai);
     return String(v.nilai);
   }
 
@@ -2305,6 +2353,7 @@
     if (swab) swab.hidden = !adaKata(isiJenis('jari'), 'swab') &&
                             !adaKata(isiJenis('jari'), 'alkohol');
 
+    renderGel();
     renderCatatan();
   }
 
@@ -2312,6 +2361,144 @@
     var cat = id('catatan');
     cat.innerHTML = '';
     S.catatan.forEach(function (t) { cat.appendChild(el('li', null, t)); });
+  }
+
+  /* ================================================================
+     GEL ELEKTROFORESIS — satu-satunya hasilVisual yang menggambar ADEGAN,
+     bukan mengubah warna cairan.
+
+     Spesifikasinya data:
+       { jenis:'gel', nilai:{ lajur:[
+           { nama, jenis:'marker', pita:[300,250,...] },
+           { nama, genotipe:'Heterozigot', pita:[211,131,80] } ]}}
+
+     Posisi pita dihitung dari UKURAN bp pada SKALA LOG — itu memang perilaku
+     migrasi elektroforesis: fragmen besar tertahan matriks agarose dan tinggal
+     dekat sumur, fragmen kecil melaju jauh. Skalanya diambil dari rentang bp
+     yang benar-benar ada di gel ini (diberi padding), jadi engine tidak perlu
+     hafal angka room manapun. Ini murni PENGGAMBARAN: tidak ada yang dihitung
+     soal kimia/biologinya — pita mana yang muncul tetap ditulis data.
+     ================================================================ */
+  var GEL_W = 320, GEL_H = 232;
+  var GEL_ATAS = 34, GEL_BAWAH = 182;   /* rentang-y tempat pita boleh jatuh */
+
+  function bpGel(spec) {
+    var out = [];
+    ((spec && spec.lajur) || []).forEach(function (l) {
+      (l.pita || []).forEach(function (bp) {
+        var n = Number(bp);
+        if (n > 0) out.push(n);
+      });
+    });
+    return out;
+  }
+
+  /* peta ukuran bp -> koordinat y. Dikembalikan sebagai fungsi supaya skalanya
+     dihitung sekali per gel, bukan per pita. */
+  function skalaGel(spec) {
+    var semua = bpGel(spec);
+    if (!semua.length) return null;
+    var hi = Math.log(Math.max.apply(null, semua));
+    var lo = Math.log(Math.min.apply(null, semua));
+    var rentang = (hi - lo) || Math.log(2);
+    hi += rentang * 0.18;              /* padding supaya pita tidak menempel tepi */
+    lo -= rentang * 0.18;
+    return function (bp) {
+      var t = (hi - Math.log(Number(bp))) / (hi - lo);
+      if (t < 0) t = 0; else if (t > 1) t = 1;
+      return GEL_ATAS + t * (GEL_BAWAH - GEL_ATAS);
+    };
+  }
+
+  function ringkasGel(spec) {
+    var lajur = (spec && spec.lajur) || [];
+    var bagian = [];
+    lajur.forEach(function (l) {
+      if (l.jenis === 'marker') return;   /* marker itu penggaris, bukan hasil */
+      var pita = (l.pita || []).join(', ');
+      bagian.push('Lajur ' + (l.nama || 'sampel') + ' menunjukkan ' +
+        (l.pita || []).length + ' pita (' + pita + ' bp)' +
+        (l.genotipe ? ' \u2014 ' + l.genotipe : '') + '.');
+    });
+    return bagian.length ? bagian.join(' ') : 'Gel divisualisasi.';
+  }
+
+  function svgGel(spec) {
+    var lajur = (spec && spec.lajur) || [];
+    var y = skalaGel(spec);
+    if (!lajur.length || !y) return '';
+
+    var kiri = 12, kanan = GEL_W - 12;
+    var lebarLajur = (kanan - kiri) / lajur.length;
+    var lebarPita = Math.min(70, lebarLajur - 26);
+
+    var isi =
+      '<rect class="gel-kaca" x="' + kiri + '" y="10" width="' + (kanan - kiri) +
+        '" height="' + (GEL_BAWAH + 14 - 10) + '" rx="3"/>';
+
+    lajur.forEach(function (l, i) {
+      var cx = kiri + lebarLajur * (i + 0.5);
+      var x = cx - lebarPita / 2;
+      var marker = l.jenis === 'marker';
+
+      /* sumur tempat sampel dimuat */
+      isi += '<rect class="gel-sumur" x="' + (x + lebarPita * 0.18) + '" y="16" width="' +
+        (lebarPita * 0.64) + '" height="8"/>';
+
+      (l.pita || []).forEach(function (bp) {
+        var py = y(bp);
+        isi += '<rect class="gel-pita' + (marker ? ' gel-pita-marker' : '') +
+          '" data-lajur="' + (l.nama || '') + '" data-bp="' + bp + '" data-y="' +
+          (Math.round(py * 10) / 10) + '" x="' + x + '" y="' + (py - 3) +
+          '" width="' + lebarPita + '" height="6" rx="2"/>';
+        if (marker) {
+          isi += '<text class="gel-ukuran" x="' + (x + lebarPita + 5) + '" y="' + (py + 3) +
+            '">' + bp + '</text>';
+        }
+      });
+
+      isi += '<text class="gel-lajur-nama" x="' + cx + '" y="' + (GEL_BAWAH + 32) +
+        '" text-anchor="middle">' + l.nama + '</text>';
+      if (l.genotipe) {
+        isi += '<text class="gel-genotipe" x="' + cx + '" y="' + (GEL_BAWAH + 46) +
+          '" text-anchor="middle">' + l.genotipe + '</text>';
+      }
+    });
+
+    return '<svg class="gel-svg" viewBox="0 0 ' + GEL_W + ' ' + GEL_H +
+      '" role="img" aria-label="Hasil elektroforesis gel">' + isi + '</svg>';
+  }
+
+  /* Room ini memakai gel atau tidak — dari data, bukan dari nama room. */
+  function punyaGel() {
+    return (S.percobaan.langkah || []).some(function (l) {
+      return l.hasilVisual && daftarVisual(l.hasilVisual).some(function (v) {
+        return v && v.jenis === 'gel';
+      });
+    });
+  }
+
+  function bangunPanelGel() {
+    var kotak = el('div', 'gel-panel');
+    kotak.id = 'gel-panel';
+    kotak.hidden = true;
+    kotak.appendChild(el('p', 'gel-judul', 'Gel doc / UV transilluminator'));
+    var gambar = el('div', 'gel-gambar');
+    gambar.id = 'gel-gambar';
+    kotak.appendChild(gambar);
+    return kotak;
+  }
+
+  function renderGel() {
+    var panel = id('gel-panel');
+    if (!panel) return;
+    panel.hidden = !S.gel;
+    var gambar = id('gel-gambar');
+    if (!gambar) return;
+    var tanda = S.gel ? JSON.stringify(S.gel) : '';
+    if (gambar.dataset.tanda === tanda) return;   /* tidak berubah, jangan gambar ulang */
+    gambar.dataset.tanda = tanda;
+    gambar.innerHTML = S.gel ? svgGel(S.gel) : '';
   }
 
   /* ---------- layar selesai ---------- */
@@ -2328,6 +2515,14 @@
     hasil.appendChild(el('h3', 'hasil-label', 'Hasil praktikum'));
     hasil.appendChild(el('p', 'hasil-teramati',
       'Teramati: ' + (S.catatan.length ? S.catatan.join(' ') : 'tidak ada perubahan yang tercatat.')));
+    /* Kalau percobaannya menghasilkan gel, blok Hasil menampilkan GAMBARNYA —
+       bukan cuma kalimat. Di room ini gambar itulah buktinya. */
+    if (S.gel) {
+      var gel = el('div', 'hasil-gel');
+      gel.id = 'hasil-gel';
+      gel.innerHTML = svgGel(S.gel);
+      hasil.appendChild(gel);
+    }
     hasil.appendChild(el('p', 'hasil-tafsir', '→ ' + S.percobaan.interpretasiAkhir));
     box.appendChild(hasil);
 

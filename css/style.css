@@ -644,6 +644,63 @@ h1, h2, h3 { margin: 0; font-weight: 650; }
   33%, 100% { fill: var(--panel); }
 }
 
+/* --- elektroforesis: gelembung di elektroda + pita bermigrasi ke anoda --- */
+.elektro-buffer { fill: var(--kaca); opacity: .5; }
+.elektro-gel { fill: #cdd8e0; }
+.elektro-kutub { font-size: 11px; font-weight: 700; fill: var(--tinta); }
+.elektro-teks { font-size: 7px; fill: var(--tinta); font-family: inherit; }
+.elektro-layar { fill: var(--panel); }
+.elektro-gelembung circle { fill: var(--panel); stroke: var(--netral); stroke-width: .8; opacity: 0; }
+.elektro-migrasi rect { fill: var(--netral); transform-box: view-box; }
+.mesin-elektroforesis.mesin-jalan .elektro-layar { fill: #dfe8ee; }
+.mesin-elektroforesis.mesin-jalan .elektro-gelembung circle { animation: elektro-gelembung 1.1s ease-out infinite; }
+.mesin-elektroforesis.mesin-jalan .elektro-gelembung circle:nth-child(2) { animation-delay: .3s; }
+.mesin-elektroforesis.mesin-jalan .elektro-gelembung circle:nth-child(3) { animation-delay: .55s; }
+.mesin-elektroforesis.mesin-jalan .elektro-gelembung circle:nth-child(4) { animation-delay: .8s; }
+.mesin-elektroforesis.mesin-jalan .elektro-migrasi rect { animation: elektro-migrasi 2s ease-in-out infinite; }
+.mesin-elektroforesis.mesin-jalan .elektro-migrasi rect:nth-child(2) { animation-duration: 1.4s; }
+@keyframes elektro-gelembung {
+  0%   { opacity: 0;   transform: translateY(0); }
+  35%  { opacity: .9; }
+  100% { opacity: 0;   transform: translateY(-16px); }
+}
+/* pita bergerak ke ANODA (+, kanan) — arah migrasi DNA yang bermuatan negatif */
+@keyframes elektro-migrasi {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(38px); }
+}
+
+/* ---------------- GEL DOC: hasil elektroforesis ----------------
+   Satu-satunya bagian app yang sengaja GELAP: ini foto gel di bawah UV, dan
+   pita cuma terbaca sebagai cahaya di latar gelap. Di luar kotak ini palet
+   kertas tetap berlaku. */
+.gel-panel { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--garis); }
+.gel-panel[hidden] { display: none; }
+.gel-judul {
+  margin: 0 0 8px; font-size: 12px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--samar);
+}
+.gel-gambar { max-width: 340px; margin: 0 auto; }
+.gel-svg { display: block; width: 100%; height: auto; }
+.gel-kaca { fill: #14171a; }
+.gel-sumur { fill: #2b3238; stroke: #46515a; stroke-width: 1; }
+.gel-pita {
+  fill: #eaf3ee;
+  filter: drop-shadow(0 0 4px rgba(214, 255, 231, .85));
+}
+/* marker = penggaris, sengaja lebih redup daripada pita sampel */
+.gel-pita-marker { fill: #9fb6a8; filter: none; }
+.gel-ukuran { font-size: 8px; fill: #8b9aa5; font-family: inherit; }
+.gel-lajur-nama { font-size: 9px; fill: var(--tinta); font-family: inherit; }
+.gel-genotipe { font-size: 9px; font-weight: 650; fill: var(--benar); font-family: inherit; }
+
+/* gel di blok Hasil layar Selesai */
+.hasil-gel { max-width: 330px; margin: 12px 0 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .elektro-gelembung circle, .elektro-migrasi rect { animation: none !important; }
+}
+
 /* --- barang yang sedang diproses mesin: turun "masuk alat", lalu balik --- */
 .prop.zona-diproses { animation: zona-proses 1.4s ease-in-out; }
 @keyframes zona-proses {

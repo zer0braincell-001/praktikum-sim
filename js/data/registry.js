@@ -29,8 +29,8 @@ window.PRAKTIKUM_ROOMS = [
   { id: 'millon',            nama: 'Reaksi Millon',             modul: 'Biokimia', kunci: false, catatan: 'Uji gugus fenol (tirosin)' },
   { id: 'asam-urat',         nama: 'Tes Kadar Asam Urat',       modul: 'Biokimia', kunci: false, catatan: 'Alur alat: lanset + Easy Touch' },
 
-  /* Biomedik — elektroforesis masih placeholder (#B4). */
+  /* Biomedik — pipeline lengkap: Isolasi DNA -> PCR -> Elektroforesis. */
   { id: 'isolasi-dna',       nama: 'Isolasi DNA',               modul: 'Biomedik', kunci: false, catatan: 'Ekstraksi DNA dari darah (spin-column)' },
   { id: 'pcr',               nama: 'PCR',                       modul: 'Biomedik', kunci: false, catatan: 'Amplifikasi DNA (thermal cycler)' },
-  { id: 'elektroforesis',    nama: 'Elektroforesis',            modul: 'Biomedik', kunci: true,  catatan: 'Pemisahan DNA di gel agarose' }
+  { id: 'elektroforesis',    nama: 'Elektroforesis',            modul: 'Biomedik', kunci: false, catatan: 'Pemisahan DNA di gel agarose' }
 ];
