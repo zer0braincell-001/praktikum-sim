@@ -645,8 +645,18 @@ h1, h2, h3 { margin: 0; font-weight: 650; }
 }
 
 /* --- elektroforesis: gelembung di elektroda + pita bermigrasi ke anoda --- */
-.elektro-buffer { fill: var(--kaca); opacity: .5; }
+/* Gel & buffer baru tampak setelah benar-benar dimasukkan ke chamber. Engine
+   cuma menyalin nama isi zona ke data-isi; yang memaknai kata kuncinya CSS
+   sprite ini — pola yang sama dengan prop Easy Touch. */
+.elektro-buffer, .elektro-gel, .elektro-sumur, .elektro-migrasi { opacity: 0; transition: opacity .3s ease; }
+.mesin-elektroforesis[data-isi*="Running buffer"] .elektro-buffer { opacity: .5; }
+.mesin-elektroforesis[data-isi*="Gel agarose"] .elektro-gel,
+.mesin-elektroforesis[data-isi*="Gel agarose"] .elektro-sumur { opacity: 1; }
+.mesin-elektroforesis[data-isi*="Produk PCR"] .elektro-migrasi,
+.mesin-elektroforesis.mesin-jalan .elektro-migrasi { opacity: 1; }
+.elektro-buffer { fill: var(--kaca); }
 .elektro-gel { fill: #cdd8e0; }
+.elektro-sumur rect { fill: #6f7d88; }
 .elektro-kutub { font-size: 11px; font-weight: 700; fill: var(--tinta); }
 .elektro-teks { font-size: 7px; fill: var(--tinta); font-family: inherit; }
 .elektro-layar { fill: var(--panel); }
@@ -657,8 +667,18 @@ h1, h2, h3 { margin: 0; font-weight: 650; }
 .mesin-elektroforesis.mesin-jalan .elektro-gelembung circle:nth-child(2) { animation-delay: .3s; }
 .mesin-elektroforesis.mesin-jalan .elektro-gelembung circle:nth-child(3) { animation-delay: .55s; }
 .mesin-elektroforesis.mesin-jalan .elektro-gelembung circle:nth-child(4) { animation-delay: .8s; }
-.mesin-elektroforesis.mesin-jalan .elektro-migrasi rect { animation: elektro-migrasi 2s ease-in-out infinite; }
-.mesin-elektroforesis.mesin-jalan .elektro-migrasi rect:nth-child(2) { animation-duration: 1.4s; }
+/* Migrasi SEARAH: dari sumur (sisi katoda −) menuju anoda (+), melambat di
+   akhir, lalu BERHENTI di posisi akhir. Bukan bolak-balik — DNA tidak pernah
+   berbalik arah selama arus mengalir. `forwards` + sekali jalan yang bikin
+   pita berhenti, bukan meloncat balik ke sumur. */
+.mesin-elektroforesis.mesin-jalan .elektro-migrasi rect {
+  animation: elektro-migrasi 1.9s cubic-bezier(.16, .72, .28, 1) 1 forwards;
+}
+/* fragmen kecil melaju lebih cepat & lebih jauh daripada fragmen besar */
+.mesin-elektroforesis.mesin-jalan .elektro-migrasi rect:nth-child(2) {
+  animation-duration: 1.5s;
+  animation-name: elektro-migrasi-jauh;
+}
 @keyframes elektro-gelembung {
   0%   { opacity: 0;   transform: translateY(0); }
   35%  { opacity: .9; }
@@ -666,9 +686,25 @@ h1, h2, h3 { margin: 0; font-weight: 650; }
 }
 /* pita bergerak ke ANODA (+, kanan) — arah migrasi DNA yang bermuatan negatif */
 @keyframes elektro-migrasi {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(38px); }
+  0%   { transform: translateX(0px); }
+  60%  { transform: translateX(22px); }
+  100% { transform: translateX(30px); }
 }
+@keyframes elektro-migrasi-jauh {
+  0%   { transform: translateX(0px); }
+  60%  { transform: translateX(34px); }
+  100% { transform: translateX(46px); }
+}
+
+/* --- panel input parameter alat (gaya mengikuti panel Takaran) --- */
+.param-baris { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.param-nama { flex: 1 1 auto; font-size: 13px; }
+.param-input {
+  width: 84px; padding: 6px 8px; font: inherit; text-align: right;
+  border: 1px solid var(--tinta); background: var(--panel); color: inherit;
+}
+.param-satuan { width: 42px; font-size: 12px; color: var(--samar); }
+.param-info { margin: 6px 0 0; font-size: 12px; color: var(--samar); }
 
 /* ---------------- GEL DOC: hasil elektroforesis ----------------
    Satu-satunya bagian app yang sengaja GELAP: ini foto gel di bawah UV, dan
@@ -1002,3 +1038,100 @@ body.sedang-drag [data-target].sorot::after { display: block; content: 'lepas di
 /* slot strip di badan alat mungil dan sudah punya caption di atasnya —
    badge "klik di sini" dinaikkan supaya tidak menimpa caption itu */
 .alat-slot.target-siap::after { top: -32px; }
+
+/* ================================================================
+   SOKET ELEKTRODA (room Elektroforesis)
+   Ditaruh paling bawah dengan sengaja: aturan badge generik
+   `[data-target].target-siap::after` ada di atas dan specificity-nya sama,
+   jadi yang menang harus yang belakangan.
+
+   Masalah yang diperbaiki: dua jack kecil tanpa label bikin user tidak tahu
+   harus menyeret kabel ke mana, sementara badge besar di sprite chamber malah
+   mendominasi layar. Sekarang soketnya besar, berlabel, dan BERWARNA sesuai
+   kutub — merah = anoda (+), hitam = katoda (−) — jadi kabel merah punya
+   pasangan yang jelas secara visual.
+
+   Ini TIDAK melanggar aturan "sorot semua target": warna soket statis, tidak
+   bergantung pada item apa yang sedang dipegang, jadi tidak membocorkan
+   langkah mana yang benar di mode Ujian.
+   ================================================================ */
+.mesin-elektroforesis .mesin-gambar { width: 240px; height: 200px; }
+
+/* Selektornya sengaja `.terminal[data-kutub]`, bukan `.terminal` saja:
+   aturan generik `[data-target].target-siap { position: relative }` di atas
+   punya specificity (0,2,0) dan akan MENGALAHKAN `.terminal` (0,1,0) — begitu
+   user memegang item, soketnya terlempar keluar dari posisi absolutnya dan
+   jatuh ke aliran normal. Ini bekas bug nyata, ketahuan dari screenshot. */
+.terminal[data-kutub] {
+  position: absolute;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--kutub);
+  background: var(--panel);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.terminal[data-kutub="plus"]  { --kutub: #c0392b; left: 65.8%; top: 65.5%; }
+.terminal[data-kutub="minus"] { --kutub: #1d2126; left: 81.6%; top: 65.5%; }
+
+/* lubang jack di tengah soket */
+.terminal-lubang {
+  width: 13px; height: 13px; border-radius: 50%;
+  background: #cfd6db; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .35);
+}
+.terminal-nama {
+  position: absolute; top: -17px; left: 50%; transform: translateX(-50%);
+  font-size: 14px; font-weight: 700; line-height: 1; color: var(--kutub);
+  /* chip putih tipis: label duduk di atas badan power supply yang bergaris,
+     tanpa ini +/- nya tenggelam di stroke sprite */
+  background: var(--panel); padding: 0 3px; border-radius: 2px;
+}
+
+/* kabel yang sudah TERCOLOK: sumbat berwarna di lubang + lead ke arah chamber */
+.terminal-kabel {
+  position: absolute; left: 50%; top: 50%;
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--kutub);
+  transform: translate(-50%, -50%);
+  font-size: 0; overflow: visible;
+}
+.terminal-kabel::after {
+  content: '';
+  position: absolute; right: 11px; top: 50%;
+  width: 30px; height: 5px; border-radius: 3px;
+  background: var(--kutub);
+  transform: translateY(-50%);
+}
+.terminal-kabel[hidden] { display: none; }
+
+/* --- hint: kecil DI SOKETNYA, bukan badge besar di chamber --- */
+.terminal.target-siap, .terminal.sorot {
+  outline: 3px dashed var(--kutub);
+  outline-offset: 3px;
+}
+.terminal.sorot { outline-style: solid; transform: none; }
+.terminal.target-siap::after,
+body.sedang-drag .terminal.sorot::after {
+  content: 'colok di sini';
+  display: block;
+  position: absolute; left: 50%; top: 40px;
+  transform: translateX(-50%);
+  /* dua soket cuma berjarak ~38px sedangkan badge-nya ~70px: kalau sebaris
+     keduanya saling tindih dan tidak terbaca. Yang katoda diturunkan. */
+  background: var(--kutub); color: #fff;
+  font-size: 9px; letter-spacing: .06em; text-transform: uppercase;
+  padding: 1px 5px; white-space: nowrap;
+  z-index: 7; pointer-events: none;
+}
+
+.terminal[data-kutub="minus"].target-siap::after,
+body.sedang-drag .terminal[data-kutub="minus"].sorot::after { top: 58px; }
+
+/* Sprite mesin yang juga zona (chamber) diredam: badge & outline-nya jangan
+   mendominasi layar saat user sedang memegang kabel. Highlight-nya TETAP ada
+   — aturan "sorot semua target" tidak dilanggar, cuma bobot visualnya
+   dikembalikan proporsional. */
+.mesin.target-siap { outline-width: 1px; outline-offset: 2px; }
+.mesin.target-siap::after {
+  font-size: 9px; padding: 0 5px; top: -9px; opacity: .7;
+}

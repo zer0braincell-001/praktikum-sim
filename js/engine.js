@@ -33,7 +33,8 @@
   /* Satuan yang didukung engine. Yang MUNCUL di panel = irisan daftar ini
      dengan satuan yang benar-benar dipakai langkah percobaan aktif. */
   var SATUAN_DIDUKUNG = ['cc', 'ml', 'µL', 'tetes', '%', 'gram'];
-  var AKSI_TOMBOL = ['nyalakan', 'panaskan', 'amati', 'tindakan']; /* aksi tanpa drag */
+  /* aksi tanpa drag — semuanya dipicu tombol di panel Aksi */
+  var AKSI_TOMBOL = ['nyalakan', 'panaskan', 'amati', 'tindakan', 'atur-parameter'];
   var WARNA_BENING = '#dce6ee';
 
   /* ---------- state ---------- */
@@ -85,6 +86,11 @@
                            dipakai di sub-uji ini. Murni penanda tampilan —
                            tidak dibaca validasi. */
       takaran: { nilai: 1, satuan: satuanDipakai(percobaan)[0] || 'cc' },
+      /* nilai parameter alat yang diketik user (aksi 'atur-parameter').
+         BELAJAR: di-prefill dengan nilai benar — ini memang bukan uji ingatan.
+         UJIAN: kosong, harus diketik dari ingatan; tidak ada satu pun angka
+         benar yang ikut ditulis ke DOM. */
+      parameter: prefillParameter(percobaan, mode === 'ujian' ? 'ujian' : 'belajar'),
       selesai: false
     };
   }
@@ -101,6 +107,28 @@
      langkahnya bertakaran (Isolasi DNA pakai µL, Asam Urat tidak pakai). */
   function pakaiTakaran() {
     return !!S && satuanDipakai(S.percobaan).length > 0;
+  }
+
+  /* Parameter alat yang dipakai percobaan ini (gabungan seluruh langkah
+     'atur-parameter', dedup by nama, urut kemunculan). Data-driven: room yang
+     tidak punya langkah itu tidak dapat panelnya sama sekali. */
+  function parameterDipakai(percobaan) {
+    var out = [];
+    (percobaan.langkah || []).forEach(function (l) {
+      if (l.aksi !== 'atur-parameter') return;
+      (l.parameter || []).forEach(function (par) {
+        if (!out.some(function (x) { return x.nama === par.nama; })) out.push(par);
+      });
+    });
+    return out;
+  }
+
+  function prefillParameter(percobaan, mode) {
+    var isi = {};
+    parameterDipakai(percobaan).forEach(function (par) {
+      isi[par.nama] = mode === 'ujian' ? null : par.benar;
+    });
+    return isi;
   }
 
   /* Langkah takaran percobaan ini pakai angka pecahan atau tidak. Menentukan
@@ -503,6 +531,8 @@
     kolom.appendChild(rak);
 
     if (pakaiTakaran()) kolom.appendChild(bangunPanelTakaran());
+    var par = bangunPanelParameter();
+    if (par) kolom.appendChild(par);
 
     /* Panel "Aksi" TIDAK di sini lagi — dia dipasang di kolom kanan, menempel
        ke panggung, supaya tombolnya dekat dengan objek yang dioperasikan. */
@@ -682,6 +712,58 @@
     return kotak;
   }
 
+  /* Panel input parameter alat. Bentuknya sengaja meniru panel Takaran:
+     user sudah kenal pola "isi angka di kolom kiri, lalu tekan tombol aksi".
+     Di UJIAN kolomnya kosong dan TIDAK ada placeholder/label/title yang memuat
+     angka benar — satu-satunya sumber angka itu ingatan user. */
+  function bangunPanelParameter() {
+    var daftar = parameterDipakai(S.percobaan);
+    if (!daftar.length) return null;
+
+    var kotak = el('div', 'kotak');
+    kotak.id = 'kotak-parameter';
+    kotak.appendChild(el('h3', 'kotak-judul', 'Parameter alat'));
+
+    daftar.forEach(function (par) {
+      var baris = el('div', 'param-baris');
+      baris.dataset.param = par.nama;
+      baris.appendChild(el('span', 'param-nama', par.nama));
+
+      var input = el('input', 'param-input');
+      input.type = 'number';
+      input.min = '0';
+      input.step = 'any';
+      input.dataset.paramInput = par.nama;
+      var awal = S.parameter[par.nama];
+      input.value = (awal === null || awal === undefined) ? '' : String(awal);
+      input.addEventListener('input', function () {
+        var v = parseFloat(input.value);
+        S.parameter[par.nama] = (input.value === '' || isNaN(v)) ? null : rapikanAngka(v);
+        /* sengaja BUKAN update(): update() menulis ulang isi input dan bikin
+           ketikan setengah jalan melompat — pola yang sama dengan Takaran. */
+      });
+      baris.appendChild(input);
+      baris.appendChild(el('span', 'param-satuan', par.satuan || ''));
+      kotak.appendChild(baris);
+    });
+
+    /* Info bacaan alat (mis. arus) — bukan sesuatu yang diketik user, jadi
+       menampilkannya bukan bocoran jawaban. */
+    var info = infoParameter();
+    if (info) kotak.appendChild(el('p', 'param-info', info));
+    kotak.appendChild(el('p', 'petunjuk',
+      'Isi parameter di sini, lalu tekan tombolnya di panel Aksi.'));
+    return kotak;
+  }
+
+  function infoParameter() {
+    var teks = null;
+    (S.percobaan.langkah || []).forEach(function (l) {
+      if (l.aksi === 'atur-parameter' && l.info && !teks) teks = l.info;
+    });
+    return teks;
+  }
+
   function ubahTakaran(delta) {
     var v = rapikanAngka((S.takaran.nilai || 0) + delta);
     if (v < 0) v = 0;
@@ -782,6 +864,10 @@
     /* Target yang namanya justru MESIN (mis. "Heat block") tidak digambar
        sebagai prop: sprite mesinnya sendiri yang jadi targetnya, supaya tidak
        ada kotak dashed kembar di sebelah mesin yang sudah digambar. */
+    /* terminal diperiksa lebih dulu: dia nempel di sprite mesin sebagai
+       hotspot, bukan prop berdiri sendiri (pola yang sama dengan slot strip
+       di alat Easy Touch). */
+    if (n.indexOf('terminal') !== -1) return 'terminal';
     if (mesinBerprop(nama)) return 'mesin';
     if (n.indexOf('strip') !== -1) return 'strip';
     if (n.indexOf('lanset') !== -1) return 'lanset';
@@ -909,6 +995,11 @@
       '<rect class="elektro-buffer" x="10" y="70" width="100" height="52"/>' +
       '<rect class="elektro-gel" x="28" y="80" width="64" height="34" ' +
         'stroke="currentColor" stroke-width="1.5"/>' +
+      /* deretan sumur, tercetak DI DALAM gel — muncul bareng gelnya */
+      '<g class="elektro-sumur">' +
+        '<rect x="31" y="83" width="7" height="4"/><rect x="31" y="92" width="7" height="4"/>' +
+        '<rect x="31" y="101" width="7" height="4"/>' +
+      '</g>' +
       /* elektroda: katoda (-) kiri, anoda (+) kanan */
       '<line x1="20" y1="56" x2="20" y2="118" stroke="currentColor" stroke-width="2.5"/>' +
       '<line x1="100" y1="56" x2="100" y2="118" stroke="currentColor" stroke-width="2.5"/>' +
@@ -924,17 +1015,20 @@
         '<rect x="36" y="88" width="14" height="4" rx="1.5"/>' +
         '<rect x="36" y="100" width="14" height="4" rx="1.5"/>' +
       '</g>' +
-      /* power supply + layar */
-      '<rect x="120" y="66" width="52" height="58" rx="4" fill="none" ' +
+      /* Power supply + layar. Badannya sengaja dibuat lapang: dua SOKET
+         elektroda digambar sebagai elemen HTML di atasnya (lihat .terminal),
+         supaya bisa jadi sasaran drag yang besar, berlabel, dan berwarna.
+         Jack SVG kecil yang dulu ada di sini dilepas — dia yang bikin user
+         tidak tahu harus menyeret kabel ke mana. */
+      '<rect x="116" y="50" width="62" height="84" rx="4" fill="none" ' +
         'stroke="currentColor" stroke-width="2.5"/>' +
-      '<rect class="elektro-layar" x="127" y="74" width="38" height="22" ' +
+      /* layar dinaikkan: ruang di bawahnya dipakai label +/- dua soket */
+      '<rect class="elektro-layar" x="124" y="56" width="46" height="22" ' +
         'stroke="currentColor" stroke-width="1.5"/>' +
-      '<text class="elektro-teks" x="146" y="83" text-anchor="middle">100 V</text>' +
-      '<text class="elektro-teks" x="146" y="92" text-anchor="middle">400 mA</text>' +
-      '<circle cx="133" cy="110" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
-      '<circle cx="159" cy="110" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
-      '<line x1="112" y1="72" x2="120" y2="72" stroke="currentColor" stroke-width="2"/>' +
-      '<line x1="112" y1="112" x2="120" y2="112" stroke="currentColor" stroke-width="2"/>' +
+      '<text class="elektro-teks" x="147" y="64" text-anchor="middle">100 V</text>' +
+      '<text class="elektro-teks" x="147" y="73" text-anchor="middle">400 mA</text>' +
+      '<line x1="112" y1="62" x2="116" y2="62" stroke="currentColor" stroke-width="2"/>' +
+      '<line x1="112" y1="118" x2="116" y2="118" stroke="currentColor" stroke-width="2"/>' +
       '<line x1="2" y1="130" x2="178" y2="130" stroke="currentColor" stroke-width="2.5"/>' +
     '</svg>';
 
@@ -1094,7 +1188,7 @@
     var daftar = mesinDipakai();
     if (!daftar.length) return null;
     var baris = el('div', 'mesin-baris');
-    daftar.forEach(function (m) {
+    daftar.forEach(function (m, i) {
       var kotak = el('div', 'mesin mesin-' + m.id);
       kotak.id = 'mesin-' + m.id;
       var g = el('div', 'mesin-gambar');
@@ -1107,6 +1201,31 @@
       if (sbg.length) {
         kotak.dataset.target = sbg[0];
         pasangKlikTarget(kotak);
+      }
+
+      /* Terminal (+/−) ditempelkan ke mesin PERTAMA yang digambar — room yang
+         punya terminal sejauh ini selalu punya satu mesin. Posisinya diatur
+         CSS lewat data-kutub. */
+      if (i === 0) {
+        daftarTarget().filter(function (t) { return jenisProp(t) === 'terminal'; })
+          .forEach(function (t) {
+            var hot = el('div', 'terminal');
+            hot.dataset.target = t;
+            hot.dataset.kutub = /\+|anoda/i.test(t) ? 'plus' : 'minus';
+            hot.title = t;
+            /* Label pendek saja (+ / −): nama zona lengkap sudah ada di title
+               dan di instruksi langkah. Dua nama panjang berdampingan di sprite
+               selebar 180px saling tindih dan malah tidak terbaca. */
+            hot.appendChild(el('span', 'terminal-nama',
+              hot.dataset.kutub === 'plus' ? '+' : '−'));
+            hot.appendChild(el('span', 'terminal-lubang'));
+            var kabel = el('span', 'terminal-kabel');
+            kabel.dataset.terminalKabel = t;
+            kabel.hidden = true;
+            hot.appendChild(kabel);
+            pasangKlikTarget(hot);
+            g.appendChild(hot);
+          });
       }
       baris.appendChild(kotak);
     });
@@ -1130,7 +1249,8 @@
     var adegan = el('div', 'adegan');
     semuaTarget.forEach(function (nama) {
       if (slotDiAlat.indexOf(nama) !== -1) return;   /* dirender di dalam prop alat */
-      if (jenisProp(nama) === 'mesin') return;       /* sprite mesinnya yang jadi target */
+      var j = jenisProp(nama);
+      if (j === 'mesin' || j === 'terminal') return;  /* keduanya hidup di sprite mesin */
       adegan.appendChild(bangunProp(nama, slotDiAlat));
     });
     meja.appendChild(adegan);
@@ -1611,6 +1731,10 @@
     if (l.takaranBenar) {
       att.takaran = { nilai: S.takaran.nilai, satuan: S.takaran.satuan };
     }
+    if (l.parameter) {
+      att.parameter = {};
+      l.parameter.forEach(function (par) { att.parameter[par.nama] = S.parameter[par.nama]; });
+    }
     var alasan = periksa(l, att);
     if (alasan) tolak(l, att, alasan);
     else terima(l, att);
@@ -1624,7 +1748,19 @@
        bukan cuma alat/target yang benar */
     if (l.label && att.label !== l.label) return 'label';
     if (l.takaranBenar && !takaranSama(att.takaran, l.takaranBenar)) return 'takaran';
+    if (l.parameter && !parameterSama(att.parameter, l.parameter)) return 'parameter';
     return null;
+  }
+
+  /* Semua parameter langkah ini harus persis. Kolom kosong dihitung salah —
+     bukan "belum diisi lalu dilewat". */
+  function parameterSama(diisi, harus) {
+    if (!diisi) return false;
+    return (harus || []).every(function (par) {
+      var v = diisi[par.nama];
+      if (v === null || v === undefined || v === '') return false;
+      return Number(v) === Number(par.benar);
+    });
   }
 
   /* Cari pesan salahUmum yang cocok — dicari di SELURUH langkah, bukan cuma
@@ -1684,6 +1820,19 @@
     if (alasan === 'label')   return 'Tindakan itu bukan yang diminta langkah ini.';
     if (alasan === 'target')  return 'Target salah. Perhatikan ke mana bahan itu seharusnya masuk.';
     if (alasan === 'takaran') return 'Takaran belum tepat untuk langkah ini.';
+    if (alasan === 'parameter') {
+      /* Sengaja TIDAK menyebut angka benarnya — di Ujian pesan ini yang tampil,
+         dan membocorkannya akan membatalkan gunanya mengetik dari ingatan.
+         Di Belajar pun cukup menyebut parameter MANA yang meleset. */
+      var meleset = (l.parameter || []).filter(function (par) {
+        var v = att.parameter ? att.parameter[par.nama] : null;
+        return v === null || v === undefined || v === '' || Number(v) !== Number(par.benar);
+      }).map(function (par) { return par.nama.toLowerCase(); });
+      if (ujian() || !meleset.length) {
+        return 'Parameter di alat belum tepat. Periksa lagi angka yang kamu isi.';
+      }
+      return 'Nilai ' + meleset.join(' & ') + ' belum tepat. Periksa lagi panel Parameter alat.';
+    }
     return 'Aksi ditolak.';
   }
 
@@ -2279,6 +2428,25 @@
       var warnaMem = S.membran[mem[m2].dataset.zonaMembran];
       mem[m2].hidden = !warnaMem;
       if (warnaMem) mem[m2].style.backgroundColor = warnaMem;
+    }
+
+    /* Mesin yang sekaligus zona: apa saja yang sudah masuk ke situ ditulis ke
+       data-isi, supaya sprite-nya bisa menampilkan keadaan (mis. gel sudah
+       terpasang, buffer sudah dituang). Engine tidak hafal isi apa pun — dia
+       cuma menyalin nama; yang memaknai kata kuncinya CSS sprite ybs. */
+    var mesinZona = document.querySelectorAll('.mesin[data-target]');
+    for (var mz = 0; mz < mesinZona.length; mz++) {
+      var zm = mesinZona[mz].dataset.target;
+      mesinZona[mz].dataset.isi = (S.pasang[zm] || []).join('|');
+    }
+
+    /* kabel yang sudah tersambung ke terminalnya */
+    var kabel = document.querySelectorAll('[data-terminal-kabel]');
+    for (var kb = 0; kb < kabel.length; kb++) {
+      var zt = kabel[kb].dataset.terminalKabel;
+      var isiT = S.pasang[zt] || [];
+      kabel[kb].hidden = !isiT.length;
+      kabel[kb].textContent = isiT.length ? isiT[isiT.length - 1] : '';
     }
 
     /* kolom spin: tabung mana yang sedang ditumpanginya */

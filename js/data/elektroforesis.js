@@ -14,6 +14,18 @@
    - `warna` di alatBahan cuma untuk reagen yang memang berwarna — di sini
      loading dye: marker biru, produk PCR merah (MyTaq HS Red).
 
+   Tiga hal yang membedakan room ini dari room prosedur lain:
+   - Gel agarose DI-DRAG ke chamber, bukan ditekan lewat tombol. Sumur dicetak
+     DI DALAM gel, jadi gel harus ada dulu sebelum sumur bisa dimuat.
+   - Kabel disambung dengan POLARITAS: merah ke anoda (+), hitam ke katoda
+     (\u2212). Terbalik = ditolak, karena DNA yang bermuatan negatif akan lari ke
+     arah yang salah dan keluar dari gel.
+   - Voltase & waktu DIKETIK user lewat aksi `atur-parameter`. Di Belajar
+     nilainya sudah terisi; di Ujian kolomnya kosong dan harus diingat. Karena
+     itu label tombol, safety, dan dasar teori di file ini sengaja TIDAK memuat
+     angka 100 atau 30 \u2014 di mode Ujian semuanya tetap terbaca, dan menyebut
+     angkanya di situ sama saja membocorkan jawaban.
+
    SATU jenis hasilVisual baru dipakai di sini: `gel`. Isinya spesifikasi lajur
    & ukuran pita; engine yang menggambar posisinya (skala log — fragmen besar
    dekat sumur, kecil jauh ke bawah). Pita MANA yang muncul tetap ditulis di
@@ -30,6 +42,10 @@
 
   var CHAMBER = 'Chamber elektroforesis';
   var SUMUR = 'Sumur gel';
+  var T_PLUS = 'Terminal + (anoda)';
+  var T_MINUS = 'Terminal \u2212 (katoda)';
+  var K_MERAH = 'Kabel merah (+)';
+  var K_HITAM = 'Kabel hitam (\u2212)';
 
   window.PRAKTIKUM = window.PRAKTIKUM || [];
 
@@ -49,7 +65,9 @@
       { nama: 'Gel agarose',        jumlah: '1 buah (dalam cetakan)' },
       { nama: 'Running buffer TAE', jumlah: 'secukupnya' },
       { nama: 'DNA marker',         jumlah: '5 µL', warna: '#2a4b9b' },
-      { nama: 'Produk PCR',         jumlah: '3 µL', warna: '#c0392b' }
+      { nama: 'Produk PCR',         jumlah: '3 µL', warna: '#c0392b' },
+      { nama: K_MERAH,              jumlah: '1', warna: '#c0392b' },
+      { nama: K_HITAM,              jumlah: '1', warna: '#1d2126' }
     ],
 
     langkah: [
@@ -57,14 +75,13 @@
       /* ========= TAHAP 1 — menyiapkan gel & memuat sampel ========= */
       {
         babak: T1,
-        instruksi: 'Pasang gel agarose yang sudah memadat ke dalam chamber elektroforesis.',
-        aksi: 'tindakan',
-        label: 'Pasang gel agarose ke chamber elektroforesis',
+        instruksi: 'Seret gel agarose yang sudah memadat ke dalam chamber elektroforesis.',
+        aksi: 'drag',
         sumber: 'Gel agarose',
         target: CHAMBER,
         hasilVisual: {
           jenis: 'teks',
-          nilai: 'Gel terpasang di chamber, sumur menghadap ke sisi katoda (−).'
+          nilai: 'Gel terpasang di chamber; deretan sumur terlihat di sisi katoda (−).'
         }
       },
       {
@@ -95,6 +112,11 @@
         safety: 'Pipet perlahan tepat di mulut sumur — ujung tip jangan sampai menembus dasar sumur, karena sampel akan bocor ke bawah gel.',
         salahUmum: [
           {
+            /* sumur itu cetakan DI DALAM gel: tanpa gel, tidak ada sumur */
+            jika: { target: SUMUR, belum: ['Gel agarose'] },
+            pesan: 'Gel belum dipasang, jadi belum ada sumur untuk dimuati. Pasang gel agarose ke chamber dulu.'
+          },
+          {
             jika: { sumber: 'DNA marker', takaran: 'salah' },
             pesan: 'Takaran marker tidak tepat. Protokol: 5 µL DNA marker.'
           }
@@ -122,22 +144,70 @@
       /* ========= TAHAP 2 — running & visualisasi ========= */
       {
         babak: T2,
-        instruksi: 'Tutup chamber, lalu sambungkan kabel ke power supply — merah ke anoda (+), hitam ke katoda (−).',
+        instruksi: 'Tutup chamber elektroforesis.',
         aksi: 'tindakan',
-        label: 'Tutup chamber & sambungkan power supply',
-        sumber: 'Power supply',
+        label: 'Tutup chamber',
+        sumber: 'Tutup chamber',
         target: CHAMBER,
-        safety: 'Jangan membuka tutup chamber selagi arus menyala. 100 V di dalam larutan penghantar berbahaya.',
+        /* safety ini ikut tampil di panel Keselamatan mode Ujian, jadi sengaja
+           TIDAK menyebut angka voltasenya. */
+        safety: 'Jangan membuka tutup chamber selagi arus menyala — tegangan kerja di dalam larutan penghantar berbahaya.',
+        hasilVisual: { jenis: 'teks', nilai: 'Chamber tertutup rapat.' }
+      },
+      {
+        babak: T2,
+        instruksi: 'Sambungkan kabel merah ke terminal + (anoda) — sisi seberang sumur.',
+        aksi: 'drag',
+        sumber: K_MERAH,
+        target: T_PLUS,
+        salahUmum: [
+          {
+            jika: { sumber: K_MERAH, target: T_MINUS },
+            pesan: 'Polaritas terbalik. DNA bermuatan negatif akan bergerak ke arah yang salah dan keluar dari gel — merah ke anoda (+), hitam ke katoda (−).'
+          }
+        ]
+      },
+      {
+        babak: T2,
+        instruksi: 'Sambungkan kabel hitam ke terminal − (katoda) — sisi tempat sumur berada.',
+        aksi: 'drag',
+        sumber: K_HITAM,
+        target: T_MINUS,
+        salahUmum: [
+          {
+            jika: { sumber: K_HITAM, target: T_PLUS },
+            pesan: 'Polaritas terbalik. DNA bermuatan negatif akan bergerak ke arah yang salah dan keluar dari gel — merah ke anoda (+), hitam ke katoda (−).'
+          }
+        ],
         hasilVisual: {
           jenis: 'teks',
-          nilai: 'Chamber tertutup, elektroda tersambung: katoda (−) di sisi sumur, anoda (+) di seberangnya.'
+          nilai: 'Rangkaian lengkap: anoda (+) di seberang sumur, katoda (−) di sisi sumur.'
         }
       },
       {
         babak: T2,
-        instruksi: 'Jalankan elektroforesis pada 100 V / 400 mA selama 30 menit.',
+        instruksi: 'Atur voltase dan waktu running di power supply, lalu tekan tombolnya.',
+        aksi: 'atur-parameter',
+        label: 'Atur voltase & waktu di power supply',
+        sumber: 'Pengatur power supply',
+        target: 'Power supply',
+        parameter: [
+          { nama: 'Voltase', satuan: 'V', benar: 100 },
+          { nama: 'Waktu', satuan: 'menit', benar: 30 }
+        ],
+        info: 'Arus terbaca sendiri di alat (400 mA) — tidak diatur manual.',
+        salahUmum: [
+          {
+            jika: { aksi: 'atur-parameter', belum: [K_HITAM] },
+            pesan: 'Kabel belum tersambung lengkap. Sambungkan dulu kedua elektroda sebelum mengatur power supply.'
+          }
+        ]
+      },
+      {
+        babak: T2,
+        instruksi: 'Jalankan elektroforesis sesuai parameter yang sudah diatur.',
         aksi: 'tindakan',
-        label: 'Jalankan elektroforesis 100 V / 400 mA / 30 menit',
+        label: 'Jalankan elektroforesis',
         sumber: 'Power supply',
         target: CHAMBER,
         hasilVisual: {
@@ -146,8 +216,16 @@
         },
         salahUmum: [
           {
-            jika: { label: 'Jalankan elektroforesis 100 V / 400 mA / 30 menit', belum: ['Produk PCR'] },
+            jika: { label: 'Jalankan elektroforesis', belum: ['Produk PCR'] },
             pesan: 'Sampel belum dimuat ke sumur. Kalau arus dijalankan sekarang, yang berjalan cuma buffer.'
+          },
+          {
+            jika: { label: 'Jalankan elektroforesis', belum: [K_HITAM] },
+            pesan: 'Elektroda belum tersambung lengkap — tanpa rangkaian tertutup tidak ada arus yang mengalir.'
+          },
+          {
+            jika: { label: 'Jalankan elektroforesis', belum: ['Pengatur power supply'] },
+            pesan: 'Voltase & waktu belum diatur di power supply.'
           }
         ]
       },
