@@ -1,0 +1,9 @@
+# Windows / OS junk
+*.lnk
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editor
+.vscode/
+node_modules/

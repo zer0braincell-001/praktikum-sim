@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Praktikum Sim — Trainer pra-praktikum</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+  <!-- Menu dua tingkat: kartu modul -> daftar room (diisi engine) -->
+  <section id="menu" class="view">
+    <header class="menu-head">
+      <div id="menu-nav" class="menu-nav"></div>
+      <p class="kicker" id="menu-kicker">Trainer pra-praktikum</p>
+      <h1 id="menu-judul">Praktikum Sim</h1>
+      <p id="menu-sub" class="sub"></p>
+    </header>
+    <div id="menu-kartu" class="kartu-grid"></div>
+    <p class="nota">Simulasi terpandu. Bukan pengganti praktikum di lab.</p>
+  </section>
+
+  <!-- Layar percobaan (diisi engine) -->
+  <section id="room" class="view" hidden></section>
+</div>
+
+<!-- Urutan muat penting: registry dulu, lalu tiap file data, lalu engine.
+     Tanpa fetch / XHR / ES module supaya jalan di file:// -->
+<script src="js/data/registry.js"></script>
+<script src="js/data/susunan-elementer.js"></script>
+<script src="js/data/biuret.js"></script>
+<script src="js/data/xanthoprotein.js"></script>
+<script src="js/data/millon.js"></script>
+<script src="js/data/asam-urat.js"></script>
+<script src="js/data/isolasi-dna.js"></script>
+<script src="js/engine.js"></script>
+</body>
+</html>
