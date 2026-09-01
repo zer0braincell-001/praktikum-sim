@@ -41,7 +41,7 @@
   var S = null;
 
   function stateBaru(percobaan, mode) {
-    var total = (percobaan.langkah || []).length || 1;
+    var total = jumlahTugas(percobaan) || 1;
     return {
       percobaan: percobaan,
       mode: mode === 'ujian' ? 'ujian' : 'belajar',
@@ -73,6 +73,8 @@
                            situ. Ini produk akhir yang kelihatan. */
       gel: null,        /* spesifikasi gel elektroforesis dari hasilVisual jenis
                            'gel'. Dipakai dua tempat: panggung & blok Hasil. */
+      zoom: 1,          /* mikroskop virtual (room histologi) */
+      geser: { x: 0, y: 0 },
       warna: WARNA_BENING,
       endapan: null,
       gas: false,
@@ -101,6 +103,46 @@
      tidak ada takaran. Area kerja diganti daftar target + status alat.
      Room tanpa `tipe` = room kimia seperti sebelumnya, tidak berubah. */
   function prosedur() { return !!S && S.percobaan.tipe === 'prosedur'; }
+
+  /* Room ber-tipe "histologi": paradigma IDENTIFIKASI, bukan manipulasi.
+     Tidak ada rak/alat/takaran — yang ada preparat + soal. Cangkangnya
+     (menu, pemilih mode, skor, layar Selesai) dipakai ulang apa adanya. */
+  function histologi() { return !!S && S.percobaan.tipe === 'histologi'; }
+  function daftarSoal(percobaan) { return (percobaan && percobaan.soal) || []; }
+
+  /* Satuan kerja yang dinilai: `langkah` untuk room prosedur/kimia, `soal`
+     untuk room histologi. Dipakai skoring (100 / jumlah tugas). */
+  function jumlahTugas(percobaan) {
+    return percobaan.tipe === 'histologi'
+      ? daftarSoal(percobaan).length
+      : (percobaan.langkah || []).length;
+  }
+
+  function soalAktif() {
+    if (!S || S.selesai) return null;
+    return daftarSoal(S.percobaan)[S.index] || null;
+  }
+
+  function preparatBernama(nama) {
+    var daftar = (S.percobaan.preparat) || [];
+    for (var i = 0; i < daftar.length; i++) if (daftar[i].nama === nama) return daftar[i];
+    return null;
+  }
+
+  function strukturBernama(prep, nama) {
+    var daftar = (prep && prep.struktur) || [];
+    for (var i = 0; i < daftar.length; i++) if (daftar[i].nama === nama) return daftar[i];
+    return null;
+  }
+
+  /* Hit-test klik 'tunjuk'. Koordinat RELATIF (0..1) terhadap gambar, jadi
+     zoom/pan dan ukuran layar tidak mempengaruhi kebenaran jawaban — dan saat
+     mikrograf asli masuk, cukup setel ulang `region` di data. */
+  function didalamRegion(region, rx, ry) {
+    if (!region) return false;
+    return rx >= region.x && rx <= region.x + region.w &&
+           ry >= region.y && ry <= region.y + region.h;
+  }
 
   /* Panel Takaran muncul kalau DATA-nya memang memakai takaran — bukan karena
      tipe room. Room kimia selalu memakai; room prosedur baru memakai kalau
@@ -238,13 +280,25 @@
       '<line x1="14" y1="10" x2="26" y2="10" stroke="currentColor" stroke-width="1.5"/>' +
       '<line x1="14" y1="30" x2="26" y2="30" stroke="currentColor" stroke-width="1.5"/>' +
       '</svg>',
+    histologi: null,   /* diisi di bawah (butuh IKON_HISTOLOGI) */
     biokimia: '<svg class="ikon-modul" viewBox="0 0 40 40" aria-hidden="true">' +
       '<path class="ikon-isi" d="M12 25h16l-7-11v-2h-2v2z"/>' +
       '<path d="M17 4v10L9 27a3 3 0 0 0 3 5h16a3 3 0 0 0 3-5l-8-13V4" fill="none" stroke="currentColor" stroke-width="2"/>' +
       '<line x1="15" y1="4" x2="25" y2="4" stroke="currentColor" stroke-width="2"/>' +
       '</svg>'
   };
+  var IKON_HISTOLOGI =
+    '<svg class="ikon-modul" viewBox="0 0 40 40" aria-hidden="true">' +
+      '<path class="ikon-isi" d="M15 5h7v13h-7z"/>' +
+      '<rect x="15" y="4" width="7" height="14" fill="none" stroke="currentColor" stroke-width="2"/>' +
+      '<path d="M18.5 18v6" stroke="currentColor" stroke-width="2"/>' +
+      '<rect x="9" y="24" width="19" height="4" fill="none" stroke="currentColor" stroke-width="2"/>' +
+      '<path d="M12 28c0 5 3 8 6.5 8S25 33 25 28" fill="none" stroke="currentColor" stroke-width="2"/>' +
+      '<line x1="6" y1="36" x2="34" y2="36" stroke="currentColor" stroke-width="2"/>' +
+    '</svg>';
+
   function ikonModul(namaModul) {
+    if (String(namaModul).toLowerCase() === 'histologi') return IKON_HISTOLOGI;
     return IKON_MODUL[String(namaModul).toLowerCase()] || IKON_MODUL.biokimia;
   }
 
@@ -424,13 +478,23 @@
     room.hidden = false;
     room.innerHTML = '';
     room.appendChild(bangunTopbar());
-    room.appendChild(bangunPanelLangkah());
-    var grid = el('div', 'kerja-grid');
-    grid.appendChild(bangunRak());
-    grid.appendChild(bangunAreaKerja());
-    room.appendChild(grid);
-    room.appendChild(bangunLayarSelesai());
-    update();
+    if (histologi()) {
+      room.appendChild(bangunPanelSoal());
+      var gridH = el('div', 'kerja-grid');
+      gridH.appendChild(bangunKolomHisto());
+      gridH.appendChild(bangunAreaMikroskop());
+      room.appendChild(gridH);
+      room.appendChild(bangunLayarSelesai());
+      updateHisto();
+    } else {
+      room.appendChild(bangunPanelLangkah());
+      var grid = el('div', 'kerja-grid');
+      grid.appendChild(bangunRak());
+      grid.appendChild(bangunAreaKerja());
+      room.appendChild(grid);
+      room.appendChild(bangunLayarSelesai());
+      update();
+    }
     window.scrollTo(0, 0);
   }
 
@@ -2669,6 +2733,389 @@
     gambar.innerHTML = S.gel ? svgGel(S.gel) : '';
   }
 
+  /* ================================================================
+     ROOM HISTOLOGI — mikroskop virtual + soal identifikasi
+     Cangkang yang dipakai ulang: topbar, skor, feedback(), denyut(), layar
+     Selesai, gate Belajar/Ujian. Yang baru cuma area kerja & tipe interaksi.
+     ================================================================ */
+
+  /* ---- panel soal (menggantikan panel langkah) ---- */
+  function bangunPanelSoal() {
+    var p = el('section', 'panel-langkah');
+
+    var prog = el('div', 'progress');
+    prog.id = 'progress';
+    var isi = el('div', 'progress-isi');
+    isi.id = 'progress-isi';
+    prog.appendChild(isi);
+    p.appendChild(prog);
+
+    var head = el('div', 'langkah-head');
+    var kiri = el('div', 'langkah-teks');
+    var judul = el('p', 'langkah-judul');
+    judul.id = 'soal-nomor';
+    var teks = el('p', 'langkah-instruksi');
+    teks.id = 'soal-teks';
+    kiri.appendChild(judul);
+    kiri.appendChild(teks);
+    head.appendChild(kiri);
+    p.appendChild(head);
+
+    var fb = el('p', 'feedback');
+    fb.id = 'feedback';
+    p.appendChild(fb);
+    return p;
+  }
+
+  /* ---- kolom kiri: dasar teori, kriteria (Belajar), kredit ---- */
+  function bangunKolomHisto() {
+    var kolom = el('aside', 'kolom-info');
+
+    var teori = el('div', 'kotak');
+    teori.appendChild(el('h3', 'kotak-judul', 'Dasar teori'));
+    teori.appendChild(el('p', 'kotak-isi', S.percobaan.dasarTeoriRingkas || ''));
+    kolom.appendChild(teori);
+
+    /* Kriteria = panduan mengenali. Di UJIAN panel ini tidak dibangun sama
+       sekali — bukan sekadar disembunyikan — supaya tidak ada jawaban yang
+       bisa diintip dari DOM. */
+    if (!ujian()) {
+      var krit = el('div', 'kotak');
+      krit.id = 'kotak-kriteria';
+      krit.appendChild(el('h3', 'kotak-judul', 'Kriteria pengenalan'));
+      var isi = el('div', 'kriteria-isi');
+      isi.id = 'kriteria-isi';
+      krit.appendChild(isi);
+      kolom.appendChild(krit);
+    }
+
+    var kredit = bangunPanelKredit();
+    if (kredit) kolom.appendChild(kredit);
+    return kolom;
+  }
+
+  function bangunPanelKredit() {
+    var daftar = (S.percobaan.preparat) || [];
+    if (!daftar.length) return null;
+    var kotak = el('div', 'kotak kotak-kredit');
+    kotak.id = 'kotak-kredit';
+    kotak.appendChild(el('h3', 'kotak-judul', 'Sumber & lisensi gambar'));
+    var ul = el('ul', 'kredit-daftar');
+    daftar.forEach(function (prep) {
+      var a = prep.atribusi || {};
+      var li = el('li');
+      li.appendChild(el('span', 'kredit-preparat', prep.nama));
+      var rinci = [a.sumber, a.pembuat, a.lisensi].filter(function (x) { return !!x; });
+      li.appendChild(el('span', 'kredit-rinci', rinci.length ? rinci.join(' · ') : 'sumber menyusul'));
+      if (a.url) {
+        var tautan = el('a', 'kredit-url', a.url);
+        tautan.href = a.url;
+        tautan.rel = 'noopener';
+        li.appendChild(tautan);
+      }
+      ul.appendChild(li);
+    });
+    kotak.appendChild(ul);
+    return kotak;
+  }
+
+  /* ---- tabel pembeda, dirangkai dari kriteria seluruh struktur ---- */
+  function bangunTabelKriteria() {
+    var baris = [];
+    (S.percobaan.preparat || []).forEach(function (prep) {
+      (prep.struktur || []).forEach(function (st) {
+        if (st.kriteria) baris.push(st);
+      });
+    });
+    if (!baris.length) return null;
+
+    var kunci = [];
+    baris.forEach(function (st) {
+      Object.keys(st.kriteria).forEach(function (k) {
+        if (kunci.indexOf(k) === -1) kunci.push(k);
+      });
+    });
+
+    var tabel = el('table', 'tabel-kriteria');
+    tabel.id = 'tabel-kriteria';
+    var thead = el('thead');
+    var trh = el('tr');
+    trh.appendChild(el('th', null, 'Kriteria'));
+    baris.forEach(function (st) { trh.appendChild(el('th', null, st.nama)); });
+    thead.appendChild(trh);
+    tabel.appendChild(thead);
+
+    var tbody = el('tbody');
+    kunci.forEach(function (k) {
+      var tr = el('tr');
+      tr.appendChild(el('th', 'kriteria-nama', k));
+      baris.forEach(function (st) { tr.appendChild(el('td', null, st.kriteria[k] || '—')); });
+      tbody.appendChild(tr);
+    });
+    tabel.appendChild(tbody);
+    return tabel;
+  }
+
+  /* ---- kolom kanan: mikroskop virtual ---- */
+  var ZOOM_MIN = 1, ZOOM_MAKS = 4;
+
+  function bangunAreaMikroskop() {
+    var kolom = el('main', 'kolom-kerja');
+    var meja = el('div', 'meja meja-mikro');
+    meja.appendChild(el('p', 'meja-label', 'Mikroskop virtual'));
+
+    var bingkai = el('div', 'mikro-bingkai');
+    bingkai.id = 'mikro-bingkai';
+    bingkai.dataset.target = 'Preparat';
+
+    var geser = el('div', 'mikro-geser');
+    geser.id = 'mikro-geser';
+    var gambar = el('img', 'mikro-gambar');
+    gambar.id = 'mikro-gambar';
+    gambar.alt = '';
+    geser.appendChild(gambar);
+    var anotasi = el('div', 'anotasi');
+    anotasi.id = 'anotasi';
+    geser.appendChild(anotasi);
+    bingkai.appendChild(geser);
+    meja.appendChild(bingkai);
+    pasangMikroskop(bingkai, gambar);
+
+    var kontrol = el('div', 'mikro-kontrol');
+    var kurang = el('button', 'tombol tombol-kecil', '−');
+    kurang.type = 'button';
+    kurang.id = 'zoom-kurang';
+    kurang.addEventListener('click', function () { ubahZoom(-0.5); });
+    var nilai = el('span', 'mikro-zoom');
+    nilai.id = 'mikro-zoom';
+    var tambah = el('button', 'tombol tombol-kecil', '+');
+    tambah.type = 'button';
+    tambah.id = 'zoom-tambah';
+    tambah.addEventListener('click', function () { ubahZoom(0.5); });
+    var reset = el('button', 'tombol tombol-kecil', 'Reset');
+    reset.type = 'button';
+    reset.id = 'zoom-reset';
+    reset.addEventListener('click', function () { S.zoom = 1; S.geser = { x: 0, y: 0 }; renderMikro(); });
+    kontrol.appendChild(kurang);
+    kontrol.appendChild(nilai);
+    kontrol.appendChild(tambah);
+    kontrol.appendChild(reset);
+    var cap = el('span', 'mikro-caption');
+    cap.id = 'mikro-caption';
+    kontrol.appendChild(cap);
+    meja.appendChild(kontrol);
+
+    var jawab = el('div', 'kotak kotak-jawab');
+    jawab.id = 'kotak-jawab';
+    meja.appendChild(jawab);
+
+    kolom.appendChild(meja);
+    return kolom;
+  }
+
+  /* pan dengan menyeret; klik tanpa geser = jawaban 'tunjuk' */
+  function pasangMikroskop(bingkai, gambar) {
+    bingkai.addEventListener('pointerdown', function (e) {
+      if (!S || S.selesai) return;
+      var x0 = e.clientX, y0 = e.clientY;
+      var g0 = { x: S.geser.x, y: S.geser.y };
+      var geser = false;
+
+      function gerak(ev) {
+        if (!geser && Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) > 5) geser = true;
+        if (!geser) return;
+        S.geser = { x: g0.x + (ev.clientX - x0), y: g0.y + (ev.clientY - y0) };
+        renderMikro();
+      }
+      function lepas(ev) {
+        document.removeEventListener('pointermove', gerak);
+        document.removeEventListener('pointerup', lepas);
+        if (geser) return;             /* menggeser bukan menjawab */
+        var r = gambar.getBoundingClientRect();
+        if (!r || !r.width || !r.height) return;
+        klikPreparat((ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height);
+      }
+      document.addEventListener('pointermove', gerak);
+      document.addEventListener('pointerup', lepas);
+    });
+  }
+
+  function ubahZoom(d) {
+    var z = Math.round((S.zoom + d) * 10) / 10;
+    S.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAKS, z));
+    if (S.zoom === ZOOM_MIN) S.geser = { x: 0, y: 0 };
+    renderMikro();
+  }
+
+  function renderMikro() {
+    var geser = id('mikro-geser');
+    if (!geser) return;
+    geser.style.transform =
+      'translate(' + S.geser.x + 'px, ' + S.geser.y + 'px) scale(' + S.zoom + ')';
+    var z = id('mikro-zoom');
+    if (z) z.textContent = Math.round(S.zoom * 100) + '%';
+    var kurang = id('zoom-kurang'), tambah = id('zoom-tambah');
+    if (kurang) kurang.disabled = S.zoom <= ZOOM_MIN;
+    if (tambah) tambah.disabled = S.zoom >= ZOOM_MAKS;
+  }
+
+  /* ---- render soal aktif ---- */
+  function updateHisto() {
+    var total = daftarSoal(S.percobaan).length;
+    var soal = soalAktif();
+
+    /* topbar dipakai ulang dari room manipulasi, jadi skornya harus ikut
+       ditulis dari sini — update() yang biasa mengurusnya tidak jalan di room
+       histologi. */
+    id('skor-nilai').textContent = String(Math.round(S.skor));
+    id('benar-nilai').textContent = String(S.benar);
+    id('kotak-benar').hidden = !ujian();
+
+    var isi = id('progress-isi');
+    if (isi) isi.style.width = Math.round((S.index / total) * 100) + '%';
+
+    id('soal-nomor').textContent = S.selesai
+      ? 'Selesai · ' + total + ' soal'
+      : 'Soal ' + (S.index + 1) + ' dari ' + total +
+        ' · ' + (soal.tipe === 'tunjuk' ? 'tunjuk di preparat' : 'identifikasi');
+    id('soal-teks').textContent = soal
+      ? (soal.pertanyaan || soal.instruksi || '')
+      : '';
+
+    var prep = soal ? preparatBernama(soal.preparat) : null;
+    var gambar = id('mikro-gambar');
+    if (prep && gambar.dataset.preparat !== prep.nama) {
+      gambar.dataset.preparat = prep.nama;
+      gambar.src = prep.gambar;
+      S.zoom = 1;
+      S.geser = { x: 0, y: 0 };
+    }
+    var cap = id('mikro-caption');
+    if (cap) cap.textContent = prep ? prep.nama + ' · ' + (prep.perbesaran || '') : '';
+    renderMikro();
+    renderAnotasi(prep);
+    renderKriteria(prep);
+    renderJawaban(soal);
+  }
+
+  /* Anotasi (outline + label struktur) hanya di BELAJAR. Di Ujian kotak
+     anotasinya dikosongkan total — bukan cuma disembunyikan CSS. */
+  function renderAnotasi(prep) {
+    var kotak = id('anotasi');
+    if (!kotak) return;
+    kotak.innerHTML = '';
+    if (ujian() || !prep) return;
+    (prep.struktur || []).forEach(function (st) {
+      var r = st.region || {};
+      var tanda = el('div', 'anotasi-kotak');
+      tanda.dataset.struktur = st.nama;
+      tanda.style.left = (r.x * 100) + '%';
+      tanda.style.top = (r.y * 100) + '%';
+      tanda.style.width = (r.w * 100) + '%';
+      tanda.style.height = (r.h * 100) + '%';
+      tanda.appendChild(el('span', 'anotasi-label', st.nama));
+      kotak.appendChild(tanda);
+    });
+  }
+
+  function renderKriteria(prep) {
+    var isi = id('kriteria-isi');
+    if (!isi) return;              /* mode Ujian: panelnya memang tidak dibangun */
+    isi.innerHTML = '';
+    (prep && prep.struktur || []).forEach(function (st) {
+      var blok = el('div', 'kriteria-blok');
+      blok.appendChild(el('h4', 'kriteria-judul', st.nama));
+      var dl = el('dl', 'kriteria-daftar');
+      Object.keys(st.kriteria || {}).forEach(function (k) {
+        dl.appendChild(el('dt', null, k));
+        dl.appendChild(el('dd', null, st.kriteria[k]));
+      });
+      blok.appendChild(dl);
+      isi.appendChild(blok);
+    });
+  }
+
+  function renderJawaban(soal) {
+    var kotak = id('kotak-jawab');
+    if (!kotak) return;
+    kotak.innerHTML = '';
+    if (!soal) return;
+
+    if (soal.tipe === 'tunjuk') {
+      kotak.appendChild(el('h3', 'kotak-judul', 'Tunjuk di preparat'));
+      kotak.appendChild(el('p', 'petunjuk',
+        'Klik langsung di gambar. Menyeret gambar = menggeser preparat, bukan menjawab.'));
+      return;
+    }
+    kotak.appendChild(el('h3', 'kotak-judul', 'Pilih jawaban'));
+    var baris = el('div', 'jawab-baris');
+    (soal.pilihan || []).forEach(function (op) {
+      var b = el('button', 'tombol tombol-jawab');
+      b.type = 'button';
+      b.dataset.pilihan = op;
+      b.appendChild(el('span', 'jawab-label', op));
+      b.addEventListener('click', function () { jawabPilihan(op); });
+      baris.appendChild(b);
+    });
+    kotak.appendChild(baris);
+  }
+
+  /* ---- penilaian ---- */
+  function jawabPilihan(pilihan) {
+    var soal = soalAktif();
+    if (!soal || soal.tipe === 'tunjuk') return;
+    nilaiJawaban(soal, pilihan === soal.jawaban,
+      'Jawabanmu: ' + pilihan + '.',
+      'Pilihan "' + pilihan + '" belum tepat.');
+  }
+
+  function klikPreparat(rx, ry) {
+    var soal = soalAktif();
+    if (!soal) return;
+    if (soal.tipe !== 'tunjuk') {
+      feedback('salah', 'Soal ini dijawab lewat tombol pilihan, bukan dengan menunjuk gambar.');
+      return;
+    }
+    var prep = preparatBernama(soal.preparat);
+    var st = strukturBernama(prep, soal.targetStruktur);
+    var kena = st && didalamRegion(st.region, rx, ry);
+    nilaiJawaban(soal, !!kena, 'Tepat di ' + soal.targetStruktur + '.',
+      'Belum kena. Titik itu bukan ' + soal.targetStruktur + '.');
+  }
+
+  function nilaiJawaban(soal, benar, pesanBenar, pesanSalah) {
+    var total = daftarSoal(S.percobaan).length;
+    var jelas = soal.penjelasan ? ' ' + soal.penjelasan : '';
+
+    if (!benar) {
+      S.skor = Math.max(0, S.skor - PENALTI_SALAH);
+      S.kesalahan.push({
+        langkah: S.index + 1,
+        instruksi: soal.pertanyaan || soal.instruksi || '',
+        pesan: pesanSalah
+      });
+      denyut('Preparat', 'salah');
+      updateHisto();
+      feedback('salah', ujian()
+        ? 'Jawaban tidak tepat (−' + PENALTI_SALAH + ')'
+        : pesanSalah + jelas + '  (−' + PENALTI_SALAH + ')');
+      return;
+    }
+
+    S.skor = Math.min(SKOR_MAKS, S.skor + S.poinPerLangkah);
+    S.benar += 1;
+    S.index += 1;
+    denyut('Preparat', 'benar');
+    if (S.index >= total) {
+      S.selesai = true;
+      updateHisto();
+      tampilkanSelesai();
+      return;
+    }
+    updateHisto();
+    feedback('benar', (ujian() ? 'Jawaban diterima.' : 'Benar. ' + pesanBenar) + jelas);
+  }
+
   /* ---------- layar selesai ---------- */
   function tampilkanSelesai() {
     var box = id('selesai');
@@ -2681,8 +3128,15 @@
        (hasilVisual) lalu disambung ke interpretasiAkhir. Tampil di DUA mode. */
     var hasil = el('div', 'hasil');
     hasil.appendChild(el('h3', 'hasil-label', 'Hasil praktikum'));
-    hasil.appendChild(el('p', 'hasil-teramati',
-      'Teramati: ' + (S.catatan.length ? S.catatan.join(' ') : 'tidak ada perubahan yang tercatat.')));
+    if (histologi()) {
+      hasil.appendChild(el('p', 'hasil-teramati',
+        S.percobaan.rangkuman || 'Sesi identifikasi selesai.'));
+      var tabel = bangunTabelKriteria();
+      if (tabel) hasil.appendChild(tabel);
+    } else {
+      hasil.appendChild(el('p', 'hasil-teramati',
+        'Teramati: ' + (S.catatan.length ? S.catatan.join(' ') : 'tidak ada perubahan yang tercatat.')));
+    }
     /* Kalau percobaannya menghasilkan gel, blok Hasil menampilkan GAMBARNYA —
        bukan cuma kalimat. Di room ini gambar itulah buktinya. */
     if (S.gel) {
@@ -2691,7 +3145,10 @@
       gel.innerHTML = svgGel(S.gel);
       hasil.appendChild(gel);
     }
-    hasil.appendChild(el('p', 'hasil-tafsir', '→ ' + S.percobaan.interpretasiAkhir));
+    /* room histologi tidak punya interpretasiAkhir — rangkumannya sudah di atas */
+    if (S.percobaan.interpretasiAkhir) {
+      hasil.appendChild(el('p', 'hasil-tafsir', '→ ' + S.percobaan.interpretasiAkhir));
+    }
     box.appendChild(hasil);
 
     var skor = el('p', 'selesai-skor');
@@ -2707,13 +3164,20 @@
       var ul = el('ul', 'rekap');
       S.kesalahan.forEach(function (k) {
         var li = el('li');
-        li.appendChild(el('strong', null, 'Langkah ' + k.langkah + ': '));
+        /* room histologi menilai SOAL, bukan langkah — istilahnya ikut */
+      li.appendChild(el('strong', null,
+        (histologi() ? 'Soal ' : 'Langkah ') + k.langkah + ': '));
         li.appendChild(document.createTextNode(k.pesan));
         li.appendChild(el('span', 'rekap-instruksi', k.instruksi));
         ul.appendChild(li);
       });
       box.appendChild(ul);
     }
+
+    /* kredit gambar wajib ikut di layar hasil — mikrograf CC-BY menuntut
+       atribusi terlihat, bukan cuma tersimpan di data */
+    var kredit = bangunPanelKredit();
+    if (kredit) box.appendChild(kredit);
 
     var aksi = el('div', 'selesai-aksi');
     var idPercobaan = S.percobaan.id, modeSekarang = S.mode;

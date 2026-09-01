@@ -19,7 +19,8 @@ window.PRAKTIKUM_APP = {
 /* Metadata per modul. Kunci objek = nilai field `modul` di PRAKTIKUM_ROOMS. */
 window.PRAKTIKUM_MODUL_META = {
   Biokimia: { nama: 'Biokimia Blok 1.1', sub: 'Asam Amino & Protein — 5 percobaan' },
-  Biomedik: { nama: 'Biomedik Blok 1.1', sub: 'Biologi Molekuler — 3 percobaan (pipeline)' }
+  Biomedik: { nama: 'Biomedik Blok 1.1', sub: 'Biologi Molekuler — 3 percobaan (pipeline)' },
+  Histologi: { nama: 'Histologi Blok 1.1', sub: 'Mengenali sel & jaringan — identifikasi preparat' }
 };
 
 window.PRAKTIKUM_ROOMS = [
@@ -32,5 +33,8 @@ window.PRAKTIKUM_ROOMS = [
   /* Biomedik — pipeline lengkap: Isolasi DNA -> PCR -> Elektroforesis. */
   { id: 'isolasi-dna',       nama: 'Isolasi DNA',               modul: 'Biomedik', kunci: false, catatan: 'Ekstraksi DNA dari darah (spin-column)' },
   { id: 'pcr',               nama: 'PCR',                       modul: 'Biomedik', kunci: false, catatan: 'Amplifikasi DNA (thermal cycler)' },
-  { id: 'elektroforesis',    nama: 'Elektroforesis',            modul: 'Biomedik', kunci: false, catatan: 'Pemisahan DNA di gel agarose' }
+  { id: 'elektroforesis',    nama: 'Elektroforesis',            modul: 'Biomedik', kunci: false, catatan: 'Pemisahan DNA di gel agarose' },
+
+  /* Histologi — paradigma IDENTIFIKASI (bukan manipulasi): preparat + soal. */
+  { id: 'histo-fibroblas-fibrosit', nama: 'Fibroblas vs Fibrosit', modul: 'Histologi', kunci: false, catatan: 'Sel aktif vs sel istirahat di jaringan ikat' }
 ];

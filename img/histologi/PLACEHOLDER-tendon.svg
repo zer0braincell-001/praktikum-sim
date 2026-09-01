@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <!-- PLACEHOLDER, BUKAN MIKROGRAF. Lihat catatan di PLACEHOLDER-areolar.svg. -->
+  <rect width="800" height="600" fill="#eceae4"/>
+  <rect x="6" y="6" width="788" height="588" fill="none" stroke="#9aa3ab"
+        stroke-width="4" stroke-dasharray="14 10"/>
+  <text x="400" y="52" text-anchor="middle" font-family="system-ui, sans-serif"
+        font-size="26" font-weight="700" fill="#b23a34">PLACEHOLDER — mikrograf CC menyusul</text>
+  <text x="400" y="82" text-anchor="middle" font-family="system-ui, sans-serif"
+        font-size="17" fill="#6b7280">Skema tendon (ikat padat teratur) · bukan foto preparat</text>
+
+  <!-- berkas kolagen SEJAJAR -->
+  <g stroke="#c9c2b4" stroke-width="9" stroke-linecap="round">
+    <line x1="40" y1="150" x2="760" y2="150"/>
+    <line x1="40" y1="205" x2="760" y2="205"/>
+    <line x1="40" y1="260" x2="760" y2="260"/>
+    <line x1="40" y1="315" x2="760" y2="315"/>
+    <line x1="40" y1="370" x2="760" y2="370"/>
+    <line x1="40" y1="425" x2="760" y2="425"/>
+    <line x1="40" y1="480" x2="760" y2="480"/>
+  </g>
+
+  <!-- FIBROSIT: spindle gelap terjepit antar serat. region 0.45,0.50 0.12x0.10 -->
+  <g>
+    <ellipse cx="408" cy="330" rx="46" ry="13" fill="#8d8f96" opacity=".8"/>
+    <ellipse cx="408" cy="330" rx="30" ry="8" fill="#3b4048"/>
+  </g>
+  <text x="408" y="372" text-anchor="middle" font-family="system-ui, sans-serif"
+        font-size="14" fill="#6b7280">inti pipih gelap, sitoplasma sedikit</text>
+</svg>

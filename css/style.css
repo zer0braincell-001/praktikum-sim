@@ -1135,3 +1135,98 @@ body.sedang-drag .terminal[data-kutub="minus"].sorot::after { top: 58px; }
 .mesin.target-siap::after {
   font-size: 9px; padding: 0 5px; top: -9px; opacity: .7;
 }
+
+/* ================================================================
+   ROOM HISTOLOGI — mikroskop virtual & soal identifikasi
+   Paradigma identifikasi: tidak ada rak/panggung, yang ada preparat + soal.
+   Palet & komponen kotak dipakai ulang; yang baru cuma bingkai mikroskop,
+   anotasi, dan baris tombol jawaban.
+   ================================================================ */
+.meja-mikro { min-height: 0; }
+
+.mikro-bingkai {
+  position: relative;
+  overflow: hidden;                /* pan/zoom dipotong bingkai, seperti bidang pandang */
+  background: #1a1c1e;
+  border: 2px solid var(--tinta);
+  aspect-ratio: 4 / 3;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.mikro-bingkai:active { cursor: grabbing; }
+.mikro-geser {
+  position: absolute; inset: 0;
+  transform-origin: center center;
+  transition: transform .18s ease-out;
+}
+.mikro-gambar {
+  display: block; width: 100%; height: 100%;
+  object-fit: contain;
+  pointer-events: none;            /* klik ditangani bingkainya */
+  -webkit-user-drag: none;
+}
+
+/* anotasi: kotak + label struktur — mode BELAJAR saja */
+.anotasi { position: absolute; inset: 0; pointer-events: none; }
+.anotasi-kotak {
+  position: absolute;
+  border: 2px solid var(--netral);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .55);
+}
+.anotasi-label {
+  position: absolute; left: 0; bottom: 100%;
+  background: var(--netral); color: #fff;
+  font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+  padding: 1px 6px; white-space: nowrap;
+}
+
+.mikro-kontrol {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 10px;
+}
+.mikro-zoom {
+  min-width: 46px; text-align: center;
+  font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.mikro-caption { flex: 1 1 auto; text-align: right; font-size: 12px; color: var(--samar); }
+
+/* baris tombol jawaban (MCQ) */
+.kotak-jawab { margin-top: 14px; }
+.jawab-baris { display: flex; flex-wrap: wrap; gap: 8px; }
+.tombol-jawab {
+  flex: 1 1 160px; max-width: 260px;
+  text-align: left; padding: 9px 12px;
+  border-width: 2px; box-shadow: 2px 2px 0 var(--garis);
+  font-size: 13px;
+}
+.tombol-jawab:hover:not(:disabled) { background: var(--tinta); color: var(--panel); }
+
+/* panel kriteria (Belajar) — di Ujian panelnya tidak dibangun sama sekali */
+.kriteria-blok + .kriteria-blok { margin-top: 12px; border-top: 1px solid var(--garis); padding-top: 10px; }
+.kriteria-judul { margin: 0 0 6px; font-size: 14px; }
+.kriteria-daftar { margin: 0; font-size: 12.5px; }
+.kriteria-daftar dt { color: var(--samar); text-transform: uppercase; letter-spacing: .06em; font-size: 11px; }
+.kriteria-daftar dd { margin: 0 0 6px; }
+
+/* tabel pembeda di layar Selesai */
+.tabel-kriteria { width: 100%; border-collapse: collapse; margin: 12px 0 4px; font-size: 13px; }
+.tabel-kriteria th, .tabel-kriteria td {
+  border: 1px solid var(--garis); padding: 6px 9px; text-align: left; vertical-align: top;
+}
+.tabel-kriteria thead th { background: #f1efe9; }
+.tabel-kriteria .kriteria-nama {
+  width: 96px; color: var(--samar);
+  text-transform: uppercase; letter-spacing: .06em; font-size: 11px;
+}
+
+/* kredit gambar — wajib terlihat untuk mikrograf CC-BY */
+.kredit-daftar { margin: 0; padding-left: 18px; font-size: 12px; }
+.kredit-daftar li { margin-bottom: 8px; }
+.kredit-preparat { display: block; font-weight: 650; }
+.kredit-rinci { display: block; color: var(--samar); }
+.kredit-url { display: block; color: var(--netral); word-break: break-all; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mikro-geser { transition: none; }
+}

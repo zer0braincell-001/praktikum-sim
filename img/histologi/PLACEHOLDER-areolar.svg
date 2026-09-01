@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <!-- PLACEHOLDER, BUKAN MIKROGRAF. Sengaja skematik & datar: bikin gambar yang
+       "kelihatan seperti mikrograf asli" itu menyesatkan untuk trainer
+       identifikasi. Diganti mikrograf CC terverifikasi nanti; saat itu
+       `region` di data disetel ulang. -->
+  <rect width="800" height="600" fill="#eceae4"/>
+  <rect x="6" y="6" width="788" height="588" fill="none" stroke="#9aa3ab"
+        stroke-width="4" stroke-dasharray="14 10"/>
+  <text x="400" y="52" text-anchor="middle" font-family="system-ui, sans-serif"
+        font-size="26" font-weight="700" fill="#b23a34">PLACEHOLDER — mikrograf CC menyusul</text>
+  <text x="400" y="82" text-anchor="middle" font-family="system-ui, sans-serif"
+        font-size="17" fill="#6b7280">Skema jaringan ikat longgar (areolar) · bukan foto preparat</text>
+
+  <!-- serat kolagen acak (jaringan longgar) -->
+  <g stroke="#c9c2b4" stroke-width="5" fill="none" stroke-linecap="round">
+    <path d="M60 180 C 220 130, 330 250, 520 190 S 720 240, 760 200"/>
+    <path d="M50 300 C 200 350, 340 250, 500 330 S 700 300, 765 350"/>
+    <path d="M70 450 C 240 400, 350 500, 540 440 S 700 470, 755 430"/>
+    <path d="M150 120 C 200 260, 160 380, 230 540"/>
+    <path d="M600 110 C 560 260, 640 360, 590 540"/>
+  </g>
+
+  <!-- FIBROBLAS: sel bercabang, inti besar pucat. region 0.40,0.40 0.15x0.15 -->
+  <g>
+    <path d="M320 300 L 290 250 M320 300 L 390 260 M320 300 L 300 380 M320 300 L 405 355"
+          stroke="#8d7fa8" stroke-width="9" stroke-linecap="round"/>
+    <ellipse cx="348" cy="312" rx="52" ry="40" fill="#b9aecb" opacity=".75"/>
+    <ellipse cx="348" cy="312" rx="26" ry="20" fill="#f2eff6" stroke="#6f5f8c" stroke-width="3"/>
+    <circle cx="352" cy="312" r="5" fill="#6f5f8c"/>
+  </g>
+  <text x="348" y="392" text-anchor="middle" font-family="system-ui, sans-serif"
+        font-size="14" fill="#6b7280">sel bercabang, inti besar pucat</text>
+</svg>
